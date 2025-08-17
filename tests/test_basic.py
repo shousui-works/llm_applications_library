@@ -1,10 +1,11 @@
 """Basic tests to ensure the package structure is correct."""
 
+from llm.generators.schema import RetryConfig
+from llm.generators.openai_custom_generator import openai_retry
+
 
 def test_imports():
     """Test that basic imports work."""
-    from llm.generators.schema import RetryConfig
-    from llm.generators.openai import openai_retry
 
     # Test that RetryConfig can be instantiated
     config = RetryConfig()
@@ -17,7 +18,6 @@ def test_imports():
 
 def test_retry_config_defaults():
     """Test RetryConfig default values."""
-    from llm.generators.schema import RetryConfig
 
     config = RetryConfig()
     assert config.max_attempts == 3
@@ -28,7 +28,6 @@ def test_retry_config_defaults():
 
 def test_retry_config_custom_values():
     """Test RetryConfig with custom values."""
-    from llm.generators.schema import RetryConfig
 
     config = RetryConfig(
         max_attempts=5, initial_wait=2.0, max_wait=120.0, multiplier=3.0
