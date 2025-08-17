@@ -20,11 +20,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "haystack>=0.42",
     "openai>=1.50.0",
     "pydantic>=2.11.7",
     "tenacity>=8.0.0",
     "pymupdf>=1.26.3",
+    "haystack-ai>=2.16.1",
 ]
 
 [project.optional-dependencies]
@@ -52,3 +52,12 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.12.9",
+    "tox>=4.27.0",
+    "build>=1.0.0",
+]
