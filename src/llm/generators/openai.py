@@ -1,9 +1,7 @@
 """OpenAI API client for document analysis."""
 
-import base64
 import logging
 import os
-from pathlib import Path
 from typing import Any, TypeVar
 from collections.abc import Callable
 

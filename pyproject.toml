@@ -9,8 +9,12 @@ dependencies = [
     "google-cloud-storage>=3.3.0",
     "haystack>=0.42",
     "haystack-ai>=2.16.1",
+    "openai>=1.50.0",
     "pydantic>=2.11.7",
     "pymupdf>=1.26.3",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
     "ruff>=0.12.9",
+    "tenacity>=8.0.0",
     "tox>=4.27.0",
 ]
