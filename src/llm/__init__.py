@@ -7,7 +7,7 @@ __version__ = "0.1.0"
 __author__ = "LLM Applications Team"
 __email__ = "support@example.com"
 
-from llm.generators import *  # noqa: F403, F401
+from llm import generators  # noqa: F401
 
 __all__ = [
     "generators",
