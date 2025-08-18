@@ -32,8 +32,8 @@ jobs:
     - name: Get version
       id: get_version
       run: |
-        # __version__.pyからバージョンを取得
-        VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from llm.__version__ import __version__; print(__version__)")
+        # __version__.pyからバージョンを直接取得（importを回避）
+        VERSION=$(python -c "exec(open('src/llm/__version__.py').read()); print(__version__)")
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
