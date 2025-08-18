@@ -1,0 +1,70 @@
+[project]
+name = "llm-applications-library"
+dynamic = ["version"]
+description = "A comprehensive library for LLM applications with retry functionality and vision capabilities"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "LLM Applications Team"},
+]
+keywords = ["llm", "openai", "vision", "retry", "haystack", "ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "openai>=1.50.0",
+    "pydantic>=2.11.7",
+    "tenacity>=8.0.0",
+    "pymupdf>=1.26.3",
+    "haystack-ai>=2.16.1",
+    "google-cloud-storage>=3.3.0",
+    "pandas>=2.3.1",
+    "pyyaml>=6.0.0",
+    "tiktoken>=0.11.0",
+]
+
+[project.optional-dependencies]
+gcs = ["google-cloud-storage>=3.3.0"]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.12.9",
+    "tox>=4.27.0",
+]
+all = ["llm-applications-library[gcs,dev]"]
+
+[project.urls]
+Homepage = "https://github.com/shousui-works/llm_applications_library"
+Repository = "https://github.com/shousui-works/llm_applications_library"
+Documentation = "https://github.com/shousui-works/llm_applications_library#readme"
+Issues = "https://github.com/shousui-works/llm_applications_library/issues"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.dynamic]
+version = {attr = "llm.__version__.__version__"}
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.12.9",
+    "tox>=4.27.0",
+    "build>=1.0.0",
+]
