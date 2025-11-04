@@ -10,7 +10,7 @@ from tenacity import (
     wait_exponential,
 )
 import openai
-from llm.generators.schema import RetryConfig
+from .schema import RetryConfig
 
 logger = logging.getLogger(__name__)
 

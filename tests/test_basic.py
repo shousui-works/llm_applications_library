@@ -1,7 +1,7 @@
 """Basic tests to ensure the package structure is correct."""
 
-from llm.generators.schema import RetryConfig
-from llm.generators.openai_custom_generator import openai_retry
+from llm_applications_library.llm.generators.schema import RetryConfig
+from llm_applications_library.llm.generators.openai_custom_generator import openai_retry
 
 
 def test_imports():
