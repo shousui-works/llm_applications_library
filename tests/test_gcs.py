@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 from google.cloud.exceptions import NotFound
 
-from storage.gcs import GCSClient, File, get_gcs_client
+from llm_applications_library.storage.gcs import GCSClient, File, get_gcs_client
 
 
 class TestGCSClient:
@@ -14,7 +14,9 @@ class TestGCSClient:
     @pytest.fixture
     def mock_storage_client(self):
         """google.cloud.storageのClientをモック化"""
-        with patch("storage.gcs.storage.Client") as mock_client:
+        with patch(
+            "llm_applications_library.storage.gcs.storage.Client"
+        ) as mock_client:
             yield mock_client
 
     @pytest.fixture
@@ -75,7 +77,9 @@ class TestGCSClientDownload:
 
     @pytest.fixture
     def mock_storage_client(self):
-        with patch("storage.gcs.storage.Client") as mock_client:
+        with patch(
+            "llm_applications_library.storage.gcs.storage.Client"
+        ) as mock_client:
             yield mock_client
 
     @pytest.fixture
@@ -142,7 +146,9 @@ class TestGCSClientUpload:
 
     @pytest.fixture
     def mock_storage_client(self):
-        with patch("storage.gcs.storage.Client") as mock_client:
+        with patch(
+            "llm_applications_library.storage.gcs.storage.Client"
+        ) as mock_client:
             yield mock_client
 
     @pytest.fixture
@@ -232,7 +238,9 @@ class TestGCSClientRead:
 
     @pytest.fixture
     def mock_storage_client(self):
-        with patch("storage.gcs.storage.Client") as mock_client:
+        with patch(
+            "llm_applications_library.storage.gcs.storage.Client"
+        ) as mock_client:
             yield mock_client
 
     @pytest.fixture
@@ -287,7 +295,9 @@ class TestGCSClientListFiles:
 
     @pytest.fixture
     def mock_storage_client(self):
-        with patch("storage.gcs.storage.Client") as mock_client:
+        with patch(
+            "llm_applications_library.storage.gcs.storage.Client"
+        ) as mock_client:
             yield mock_client
 
     @pytest.fixture
@@ -341,7 +351,7 @@ class TestGCSClientListFiles:
 class TestFactoryFunction:
     """ファクトリ関数のテスト"""
 
-    @patch("storage.gcs.GCSClient")
+    @patch("llm_applications_library.storage.gcs.GCSClient")
     def test_get_gcs_client(self, mock_gcs_client):
         """get_gcs_client関数のテスト"""
         result = get_gcs_client(project_id="test-project")
@@ -349,7 +359,7 @@ class TestFactoryFunction:
         mock_gcs_client.assert_called_once_with(project_id="test-project")
         assert result == mock_gcs_client.return_value
 
-    @patch("storage.gcs.GCSClient")
+    @patch("llm_applications_library.storage.gcs.GCSClient")
     def test_get_gcs_client_no_project_id(self, mock_gcs_client):
         """get_gcs_client関数（プロジェクトID指定なし）のテスト"""
         result = get_gcs_client()

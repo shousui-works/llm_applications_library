@@ -3,7 +3,7 @@
 import logging
 from unittest.mock import patch, Mock
 
-from utilities.logging_config import (
+from llm_applications_library.utilities.logging_config import (
     configure_openai_logging,
     setup_debug_logging_without_openai_http,
 )
@@ -104,7 +104,7 @@ class TestSetupDebugLoggingWithoutOpenAIHTTP:
     """setup_debug_logging_without_openai_http関数のテスト"""
 
     @patch("logging.getLogger")
-    @patch("utilities.logging_config.configure_openai_logging")
+    @patch("llm_applications_library.utilities.logging_config.configure_openai_logging")
     def test_setup_debug_logging_without_openai_http(
         self, mock_configure, mock_get_logger
     ):
@@ -139,7 +139,7 @@ class TestSetupDebugLoggingWithoutOpenAIHTTP:
             mock_loggers[logger_name].setLevel.assert_called_with(logging.WARNING)
 
     @patch("logging.getLogger")
-    @patch("utilities.logging_config.configure_openai_logging")
+    @patch("llm_applications_library.utilities.logging_config.configure_openai_logging")
     def test_setup_debug_logging_all_loggers_configured(
         self, mock_configure, mock_get_logger
     ):
@@ -176,7 +176,9 @@ class TestSetupDebugLoggingWithoutOpenAIHTTP:
         mock_logger = Mock()
         mock_get_logger.return_value = mock_logger
 
-        with patch("utilities.logging_config.configure_openai_logging"):
+        with patch(
+            "llm_applications_library.utilities.logging_config.configure_openai_logging"
+        ):
             setup_debug_logging_without_openai_http()
 
         # 4つのロガーが取得されることを確認
@@ -198,7 +200,7 @@ class TestLoggingConfigIntegration:
 
     def test_import_functions(self):
         """関数のインポートテスト"""
-        from utilities.logging_config import (
+        from llm_applications_library.utilities.logging_config import (
             configure_openai_logging,
             setup_debug_logging_without_openai_http,
         )
@@ -247,8 +249,12 @@ class TestLoggingConfigIntegration:
     def test_module_docstring_examples(self):
         """モジュールのdocstring例の基本構文確認"""
         # インポート文が正しく動作することを確認
-        from utilities.logging_config import setup_debug_logging_without_openai_http
-        from utilities.logging_config import configure_openai_logging
+        from llm_applications_library.utilities.logging_config import (
+            setup_debug_logging_without_openai_http,
+        )
+        from llm_applications_library.utilities.logging_config import (
+            configure_openai_logging,
+        )
 
         # 関数が存在することを確認
         assert callable(setup_debug_logging_without_openai_http)

@@ -52,13 +52,10 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-dir]
-"" = "src"
+where = ["."]
 
 [tool.setuptools.dynamic]
-version = {attr = "llm.__version__.__version__"}
+version = {attr = "llm_applications_library.llm.__version__.__version__"}
 
 [tool.uv]
 dev-dependencies = [

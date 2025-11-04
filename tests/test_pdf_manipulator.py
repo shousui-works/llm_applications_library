@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch, Mock, MagicMock
 import pytest
 
-from utilities.pdf_manipulator import (
+from llm_applications_library.utilities.pdf_manipulator import (
     _get_local_pdf_path,
     extract_pdf_text,
     is_pdf_text_based,
@@ -40,7 +40,7 @@ class TestGetLocalPDFPath:
         with pytest.raises(FileNotFoundError, match="Local file not found"):
             _get_local_pdf_path("/nonexistent/file.pdf")
 
-    @patch("utilities.pdf_manipulator.GCSClient")
+    @patch("llm_applications_library.utilities.pdf_manipulator.GCSClient")
     @patch("tempfile.NamedTemporaryFile")
     def test_get_local_pdf_path_gcs_url(self, mock_tempfile, mock_gcs_client):
         """GCS URLからのファイルダウンロードテスト"""
@@ -70,7 +70,7 @@ class TestGetLocalPDFPath:
         assert local_path == "/tmp/test.pdf"
         assert is_temp is True
 
-    @patch("utilities.pdf_manipulator.GCSClient")
+    @patch("llm_applications_library.utilities.pdf_manipulator.GCSClient")
     @patch("tempfile.NamedTemporaryFile")
     def test_get_local_pdf_path_gcs_download_error(
         self, mock_tempfile, mock_gcs_client
@@ -93,7 +93,7 @@ class TestGetLocalPDFPath:
 class TestExtractPDFText:
     """extract_pdf_text関数のテスト"""
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_extract_pdf_text_success(self, mock_fitz_open, mock_get_local_path):
         """PDFテキスト抽出成功テスト"""
@@ -122,7 +122,7 @@ class TestExtractPDFText:
         )
         assert result == expected_content
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_extract_pdf_text_empty_pages(self, mock_fitz_open, mock_get_local_path):
         """空ページを含むPDFのテキスト抽出テスト"""
@@ -147,7 +147,7 @@ class TestExtractPDFText:
         expected_content = "--- Page 3 ---\nActual content\n\n"
         assert result == expected_content
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     @patch("pathlib.Path.unlink")
     def test_extract_pdf_text_temp_file_cleanup(
@@ -170,7 +170,7 @@ class TestExtractPDFText:
         mock_unlink.assert_called_once()
         assert "Test content" in result
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     @patch("pathlib.Path.unlink")
     def test_extract_pdf_text_cleanup_error(
@@ -192,7 +192,7 @@ class TestExtractPDFText:
         result = extract_pdf_text("gs://bucket/test.pdf")
         assert "Test content" in result
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_extract_pdf_text_fitz_error(self, mock_fitz_open, mock_get_local_path):
         """PyMuPDFエラーのテスト"""
@@ -202,7 +202,7 @@ class TestExtractPDFText:
         with pytest.raises(Exception, match="PDF reading error"):
             extract_pdf_text("test.pdf")
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_extract_pdf_text_with_cache_parameter(
         self, mock_fitz_open, mock_get_local_path
@@ -226,7 +226,7 @@ class TestExtractPDFText:
 class TestIsPDFTextBased:
     """is_pdf_text_based関数のテスト"""
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_is_pdf_text_based_true(self, mock_fitz_open, mock_get_local_path):
         """テキストベースPDFの判定テスト（True）"""
@@ -245,7 +245,7 @@ class TestIsPDFTextBased:
 
         assert result is True
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_is_pdf_text_based_false(self, mock_fitz_open, mock_get_local_path):
         """テキストベースでないPDFの判定テスト（False）"""
@@ -266,7 +266,7 @@ class TestIsPDFTextBased:
 
         assert result is None  # 関数はreturnなしで終了するのでNone
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_is_pdf_text_based_early_return(self, mock_fitz_open, mock_get_local_path):
         """最初のページでテキストが見つかった場合の早期リターンテスト"""
@@ -289,7 +289,7 @@ class TestIsPDFTextBased:
         # 最初のページでリターンするので、2ページ目は処理されない
         mock_page1.get_text.assert_called_once()
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     @patch("pathlib.Path.unlink")
     def test_is_pdf_text_based_temp_file_cleanup(
@@ -312,7 +312,7 @@ class TestIsPDFTextBased:
         mock_unlink.assert_called_once()
         assert result is True
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     @patch("pathlib.Path.unlink")
     def test_is_pdf_text_based_cleanup_error(
@@ -334,7 +334,7 @@ class TestIsPDFTextBased:
         result = is_pdf_text_based("gs://bucket/test.pdf")
         assert result is True
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_is_pdf_text_based_with_cache_parameter(
         self, mock_fitz_open, mock_get_local_path
@@ -360,7 +360,7 @@ class TestPDFManipulatorIntegration:
 
     def test_all_functions_importable(self):
         """すべての関数がインポート可能であることを確認"""
-        from utilities.pdf_manipulator import (
+        from llm_applications_library.utilities.pdf_manipulator import (
             _get_local_pdf_path,
             extract_pdf_text,
             is_pdf_text_based,
@@ -370,7 +370,7 @@ class TestPDFManipulatorIntegration:
         assert callable(extract_pdf_text)
         assert callable(is_pdf_text_based)
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_workflow_text_extraction_and_detection(
         self, mock_fitz_open, mock_get_local_path
@@ -396,7 +396,7 @@ class TestPDFManipulatorIntegration:
         assert "Sample PDF text content" in extracted_text
         assert "--- Page 1 ---" in extracted_text
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     def test_error_handling_consistency(self, mock_get_local_path):
         """エラーハンドリングの一貫性テスト"""
         # ファイルが見つからない場合
@@ -414,7 +414,9 @@ class TestPDFManipulatorIntegration:
         from pathlib import Path
 
         # これらの呼び出しでエラーが発生しないことを確認（実際のファイル処理は別途モック）
-        with patch("utilities.pdf_manipulator._get_local_pdf_path") as mock_get_local:
+        with patch(
+            "llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path"
+        ) as mock_get_local:
             with patch("fitz.open"):
                 mock_get_local.side_effect = FileNotFoundError()
 
@@ -430,8 +432,8 @@ class TestPDFManipulatorIntegration:
                 with pytest.raises(FileNotFoundError):
                     extract_pdf_text("gs://bucket/test.pdf")
 
-    @patch("utilities.pdf_manipulator.GCSClient")
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator.GCSClient")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_gcs_workflow(self, mock_fitz_open, mock_get_local_path, mock_gcs_client):
         """GCSワークフローの統合テスト"""

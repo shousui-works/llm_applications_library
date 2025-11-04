@@ -2,7 +2,7 @@ import tempfile
 from pathlib import Path
 
 import fitz  # PyMuPDF
-from src.storage.gcs import GCSClient
+from ..storage.gcs import GCSClient
 
 
 def _get_local_pdf_path(pdf_path):
