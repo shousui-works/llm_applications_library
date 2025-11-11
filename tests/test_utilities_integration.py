@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, Mock, MagicMock
 
-from utilities import (
+from llm_applications_library.utilities import (
     # File I/O
     load_yaml,
     load_text,
@@ -50,7 +50,7 @@ class TestUtilitiesModuleImports:
 
     def test_module_all_attribute(self):
         """__all__属性に正しい関数が含まれていることを確認"""
-        import utilities
+        from llm_applications_library import utilities
 
         expected_functions = [
             # File I/O
@@ -76,7 +76,7 @@ class TestUtilitiesModuleImports:
 
     def test_direct_module_import(self):
         """モジュール直接インポートのテスト"""
-        import utilities
+        from llm_applications_library import utilities
 
         # 各カテゴリの関数が利用可能であることを確認
         assert hasattr(utilities, "load_yaml")
@@ -86,7 +86,11 @@ class TestUtilitiesModuleImports:
 
     def test_specific_function_imports(self):
         """特定関数のインポートテスト"""
-        from utilities import load_yaml, count_tokens, configure_openai_logging
+        from llm_applications_library.utilities import (
+            load_yaml,
+            count_tokens,
+            configure_openai_logging,
+        )
 
         assert callable(load_yaml)
         assert callable(count_tokens)
@@ -141,7 +145,7 @@ class TestCrossModuleFunctionality:
         assert isinstance(estimated_tokens, int)
         assert estimated_tokens > 0
 
-    @patch("utilities.logging_config.logging.getLogger")
+    @patch("llm_applications_library.utilities.logging_config.logging.getLogger")
     def test_logging_configuration_integration(self, mock_get_logger):
         """ログ設定の統合テスト"""
         mock_logger = Mock()
@@ -152,7 +156,7 @@ class TestCrossModuleFunctionality:
 
         # デバッグログ設定（OpenAI HTTPログ無効化）
         with patch(
-            "utilities.logging_config.configure_openai_logging"
+            "llm_applications_library.utilities.logging_config.configure_openai_logging"
         ) as mock_configure:
             setup_debug_logging_without_openai_http()
             mock_configure.assert_called_once()
@@ -227,7 +231,7 @@ class TestUtilitiesWorkflows:
             assert isinstance(prompt_tokens, int)
             assert prompt_tokens > 0
 
-    @patch("utilities.pdf_manipulator._get_local_pdf_path")
+    @patch("llm_applications_library.utilities.pdf_manipulator._get_local_pdf_path")
     @patch("fitz.open")
     def test_pdf_processing_workflow(self, mock_fitz_open, mock_get_local_path):
         """PDF処理ワークフローのテスト"""
@@ -261,7 +265,7 @@ class TestUtilitiesWorkflows:
                 chunks = split_text_by_tokens(extracted_text, 100, "gpt-4")
                 assert len(chunks) >= 1
 
-    @patch("utilities.logging_config.logging.getLogger")
+    @patch("llm_applications_library.utilities.logging_config.logging.getLogger")
     def test_logging_setup_workflow(self, mock_get_logger):
         """ログ設定ワークフローのテスト"""
         mock_logger = Mock()

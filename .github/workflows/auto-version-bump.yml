@@ -1,0 +1,199 @@
+name: Auto Version Bump
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop, main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  version-bump:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+        enable-cache: true
+
+    - name: Install dependencies
+      run: |
+        uv sync --all-extras --dev
+
+    - name: Get current version
+      id: current_version
+      run: |
+        # 現在のバージョンを取得
+        VERSION=$(python -c "exec(open('llm_applications_library/llm/__version__.py').read()); print(__version__)")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $VERSION"
+
+    - name: Determine version bump type
+      id: bump_type
+      run: |
+        # PRのラベルからバージョンバンプタイプを決定
+        labels="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
+        echo "PR labels: $labels"
+
+        if [[ "$labels" == *"major"* ]]; then
+          echo "type=major" >> $GITHUB_OUTPUT
+          echo "Detected: MAJOR version bump"
+        elif [[ "$labels" == *"minor"* ]] || [[ "$labels" == *"feature"* ]]; then
+          echo "type=minor" >> $GITHUB_OUTPUT
+          echo "Detected: MINOR version bump"
+        elif [[ "$labels" == *"patch"* ]] || [[ "$labels" == *"bugfix"* ]] || [[ "$labels" == *"hotfix"* ]]; then
+          echo "type=patch" >> $GITHUB_OUTPUT
+          echo "Detected: PATCH version bump"
+        else
+          # デフォルトはpatch（小さな改善や修正）
+          echo "type=patch" >> $GITHUB_OUTPUT
+          echo "No specific label found, defaulting to PATCH version bump"
+        fi
+
+    - name: Calculate new version
+      id: new_version
+      run: |
+        current="${{ steps.current_version.outputs.version }}"
+        bump_type="${{ steps.bump_type.outputs.type }}"
+
+        # バージョン文字列をパース
+        IFS='.' read -ra VERSION_PARTS <<< "$current"
+        major=${VERSION_PARTS[0]}
+        minor=${VERSION_PARTS[1]}
+        patch=${VERSION_PARTS[2]}
+
+        echo "Current version parts: major=$major, minor=$minor, patch=$patch"
+
+        # バージョンバンプを計算
+        case $bump_type in
+          major)
+            major=$((major + 1))
+            minor=0
+            patch=0
+            ;;
+          minor)
+            minor=$((minor + 1))
+            patch=0
+            ;;
+          patch)
+            patch=$((patch + 1))
+            ;;
+        esac
+
+        new_version="$major.$minor.$patch"
+        echo "version=$new_version" >> $GITHUB_OUTPUT
+        echo "New version will be: $new_version"
+
+    - name: Update version file
+      run: |
+        new_version="${{ steps.new_version.outputs.version }}"
+        echo "Updating version to $new_version"
+
+        # __version__.py を更新
+        cat > llm_applications_library/llm/__version__.py << EOF
+        """Version information for llm-applications-library."""
+
+        __version__ = "$new_version"
+        __version_info__ = tuple(int(x) for x in __version__.split("."))
+        EOF
+
+        echo "Version file updated:"
+        cat llm_applications_library/llm/__version__.py
+
+    - name: Commit version bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action (Auto Version Bump)"
+
+        new_version="${{ steps.new_version.outputs.version }}"
+
+        git add llm_applications_library/llm/__version__.py
+        git commit -m "🔖 Bump version to v$new_version
+
+        Auto-generated version bump from PR #${{ github.event.pull_request.number }}
+        - PR: ${{ github.event.pull_request.title }}
+        - Bump type: ${{ steps.bump_type.outputs.type }}
+        - Previous version: ${{ steps.current_version.outputs.version }}
+        - New version: $new_version
+
+        🤖 Automated by GitHub Actions"
+
+    - name: Push changes
+      run: |
+        git push origin ${{ github.event.pull_request.base.ref }}
+
+    - name: Create and push tag
+      run: |
+        new_version="${{ steps.new_version.outputs.version }}"
+        tag_name="v$new_version"
+
+        # タグを作成
+        git tag -a "$tag_name" -m "🏷️ Release $tag_name
+
+        Auto-generated release tag
+        - Version: $new_version
+        - From PR: #${{ github.event.pull_request.number }}
+        - Title: ${{ github.event.pull_request.title }}
+        - Merged by: ${{ github.event.pull_request.merged_by.login }}
+
+        🤖 Automated by GitHub Actions"
+
+        git push origin "$tag_name"
+
+        echo "Created and pushed tag: $tag_name"
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.new_version.outputs.version }}
+        name: "🚀 Release v${{ steps.new_version.outputs.version }}"
+        body: |
+          # 🎉 自動リリース v${{ steps.new_version.outputs.version }}
+
+          ## 📝 変更内容
+          このリリースは PR #${{ github.event.pull_request.number }} のマージにより自動生成されました。
+
+          **PR情報:**
+          - **タイトル:** ${{ github.event.pull_request.title }}
+          - **マージ者:** @${{ github.event.pull_request.merged_by.login }}
+          - **バンプタイプ:** `${{ steps.bump_type.outputs.type }}`
+          - **前バージョン:** v${{ steps.current_version.outputs.version }}
+
+          ## 🔗 関連リンク
+          - [PR #${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }})
+          - [フルチェンジログ](https://github.com/${{ github.repository }}/compare/v${{ steps.current_version.outputs.version }}...v${{ steps.new_version.outputs.version }})
+
+          ---
+          🤖 このリリースはGitHub Actionsにより自動生成されました
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Summary
+      run: |
+        echo "✅ Version bump completed successfully!"
+        echo "📦 New version: v${{ steps.new_version.outputs.version }}"
+        echo "🏷️ Tag created: v${{ steps.new_version.outputs.version }}"
+        echo "🚀 GitHub Release created"
+        echo ""
+        echo "Next steps:"
+        echo "- Check the new release at: https://github.com/${{ github.repository }}/releases/latest"
+        echo "- Verify the version in the repository"

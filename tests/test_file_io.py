@@ -5,7 +5,7 @@ import yaml
 from pathlib import Path
 from unittest.mock import patch
 
-from utilities.file_io import load_yaml, load_text, save_text
+from llm_applications_library.utilities.file_io import load_yaml, load_text, save_text
 
 
 class TestLoadYaml:

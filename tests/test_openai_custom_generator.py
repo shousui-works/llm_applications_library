@@ -1,8 +1,14 @@
 """OpenAI Custom Generator の実用的なテスト"""
 
 from unittest.mock import Mock, patch
-from llm.generators.openai_custom_generator import OpenAIVisionGenerator
-from llm.generators.schema import GPTConfig, OpenAIGenerationConfig, RetryConfig
+from llm_applications_library.llm.generators.openai_custom_generator import (
+    OpenAIVisionGenerator,
+)
+from llm_applications_library.llm.generators.schema import (
+    GPTConfig,
+    OpenAIGenerationConfig,
+    RetryConfig,
+)
 
 
 class TestOpenAIVisionGenerator:
@@ -127,7 +133,9 @@ class TestOpenAIVisionGenerator:
 
         retry_config = RetryConfig(max_attempts=5, initial_wait=2.0)
 
-        with patch("llm.generators.openai_custom_generator.openai_retry") as mock_retry:
+        with patch(
+            "llm_applications_library.llm.generators.openai_custom_generator.openai_retry"
+        ) as mock_retry:
             # リトライデコレータをモック
             mock_retry.return_value = lambda f: f
 

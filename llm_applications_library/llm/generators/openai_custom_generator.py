@@ -2,83 +2,47 @@
 
 import logging
 import os
-from typing import Any, Callable, Union, Awaitable
+from typing import Any
 import openai
-from haystack import component
-from llm.generators.schema import GPTConfig, RetryConfig
+from .schema import GPTConfig, RetryConfig
 
-from llm.generators.retry_util import openai_retry
-
-from haystack.components.generators import OpenAIGenerator
-from haystack.dataclasses.streaming_chunk import StreamingChunk
-from haystack.utils.auth import Secret
+from .retry_util import openai_retry
 
 
 logger = logging.getLogger(__name__)
 
 
-@component
-class RetryOpenAIGenerator(OpenAIGenerator):
+class RetryOpenAIGenerator:
     """
     Retry機能付きのOpenAIGeneratorコンポーネント
 
-    HaystackのOpenAIGeneratorを継承し、tenacityベースのretry機能を追加。
+    tenacityベースのretry機能を追加。
     OpenAI APIの一時的なエラー（レート制限、タイムアウト等）に対して
     指数バックオフでリトライを実行する。
     """
 
     def __init__(
         self,
-        api_key: Secret | None = None,
+        api_key: str | None = None,
         model: str = "gpt-4o-mini",
-        streaming_callback: Union[
-            Callable[[StreamingChunk], None],
-            Callable[[StreamingChunk], Awaitable[None]],
-            None,
-        ] = None,
-        api_base_url: str | None = None,
-        organization: str | None = None,
-        system_prompt: str | None = None,
-        generation_kwargs: dict[str, Any] | None = None,
-        timeout: float | None = None,
-        max_retries: int | None = None,
-        http_client_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
     ):
         """
         RetryOpenAIGeneratorを初期化
 
         Args:
+            api_key: OpenAI API key
+            model: OpenAI model name
             retry_config: リトライ設定（RetryConfigオブジェクト）
-            その他のパラメータはOpenAIGeneratorと同じ
         """
-        # 親クラスの初期化
-        super().__init__(
-            api_key=api_key,
-            model=model,
-            streaming_callback=streaming_callback,
-            api_base_url=api_base_url,
-            organization=organization,
-            system_prompt=system_prompt,
-            generation_kwargs=generation_kwargs,
-            timeout=timeout,
-            max_retries=max_retries,
-            http_client_kwargs=http_client_kwargs,
-        )
-
-        # リトライ設定の保存
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.model = model
         self.retry_config = retry_config or RetryConfig()
 
-    @component.output_types(replies=list[str], meta=list[dict[str, Any]])
     def run(
         self,
         prompt: str,
         system_prompt: str | None = None,
-        streaming_callback: Union[
-            Callable[[StreamingChunk], None],
-            Callable[[StreamingChunk], Awaitable[None]],
-            None,
-        ] = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
@@ -87,7 +51,6 @@ class RetryOpenAIGenerator(OpenAIGenerator):
         Args:
             prompt: テキスト生成用のプロンプト
             system_prompt: システムプロンプト（実行時設定）
-            streaming_callback: ストリーミングコールバック
             generation_kwargs: 生成用の追加パラメータ
 
         Returns:
@@ -97,12 +60,21 @@ class RetryOpenAIGenerator(OpenAIGenerator):
         @openai_retry(self.retry_config)
         def _run_with_retry():
             """retry機能付きのrun実行"""
-            return super(RetryOpenAIGenerator, self).run(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                streaming_callback=streaming_callback,
-                generation_kwargs=generation_kwargs,
-            )
+            client = openai.OpenAI(api_key=self.api_key)
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            kwargs = {"model": self.model, "messages": messages}
+            if generation_kwargs:
+                kwargs.update(generation_kwargs)
+
+            response = client.chat.completions.create(**kwargs)
+            return {
+                "replies": [response.choices[0].message.content],
+                "meta": [response.usage.model_dump() if response.usage else {}],
+            }
 
         try:
             logger.debug(
@@ -122,7 +94,6 @@ class RetryOpenAIGenerator(OpenAIGenerator):
             }
 
 
-@component
 class OpenAIVisionGenerator:
     def __init__(self, model, api_key: str | None = None):
         self.model = model
@@ -177,7 +148,6 @@ class OpenAIVisionGenerator:
                 "error": str(e),
             }
 
-    @component.output_types(replies=dict[str, Any])
     def run(
         self,
         base64_image: str,

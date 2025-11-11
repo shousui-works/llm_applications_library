@@ -1,0 +1,125 @@
+name: Setup Repository Labels
+
+on:
+  workflow_dispatch: # 手動実行のみ
+
+permissions:
+  issues: write
+
+jobs:
+  setup-labels:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Version Labels
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const labels = [
+            // バージョンバンプ用ラベル
+            {
+              name: 'major',
+              color: 'D73A4A',
+              description: 'メジャーバージョンアップ（破壊的変更）'
+            },
+            {
+              name: 'minor',
+              color: '0075CA',
+              description: 'マイナーバージョンアップ（新機能追加）'
+            },
+            {
+              name: 'patch',
+              color: '7057FF',
+              description: 'パッチバージョンアップ（バグ修正・小改善）'
+            },
+
+            // 機能分類ラベル
+            {
+              name: 'feature',
+              color: '0E8A16',
+              description: '新機能の追加'
+            },
+            {
+              name: 'bugfix',
+              color: 'D73A4A',
+              description: 'バグ修正'
+            },
+            {
+              name: 'hotfix',
+              color: 'B60205',
+              description: '緊急修正'
+            },
+            {
+              name: 'documentation',
+              color: '0052CC',
+              description: 'ドキュメントの更新'
+            },
+            {
+              name: 'test',
+              color: 'FBCA04',
+              description: 'テストの追加・修正'
+            },
+            {
+              name: 'maintenance',
+              color: 'F9D0C4',
+              description: 'メンテナンス・リファクタリング'
+            },
+
+            // その他のカテゴリ
+            {
+              name: 'ci/cd',
+              color: '1F883D',
+              description: 'CI/CDの改善'
+            },
+            {
+              name: 'dependencies',
+              color: '0366D6',
+              description: '依存関係の更新'
+            },
+            {
+              name: 'breaking-change',
+              color: 'B60205',
+              description: '破壊的変更を含む'
+            }
+          ];
+
+          for (const label of labels) {
+            try {
+              // 既存のラベルをチェック
+              const existing = await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: label.name
+              });
+
+              // 既存のラベルを更新
+              await github.rest.issues.updateLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: label.name,
+                color: label.color,
+                description: label.description
+              });
+
+              console.log(`✅ Updated label: ${label.name}`);
+
+            } catch (error) {
+              if (error.status === 404) {
+                // ラベルが存在しない場合は新規作成
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+
+                console.log(`🆕 Created label: ${label.name}`);
+              } else {
+                console.log(`❌ Error with label ${label.name}:`, error.message);
+              }
+            }
+          }
+
+          console.log('🎉 Label setup completed!');

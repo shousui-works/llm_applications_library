@@ -3,7 +3,7 @@
 from unittest.mock import patch, Mock
 import tiktoken
 
-from utilities.token_utils import (
+from llm_applications_library.utilities.token_utils import (
     get_encoding_for_model,
     count_tokens,
     count_tokens_for_messages,
@@ -88,7 +88,7 @@ class TestCountTokens:
         assert result_gpt4 > 0
         assert result_gpt35 > 0
 
-    @patch("utilities.token_utils.get_encoding_for_model")
+    @patch("llm_applications_library.utilities.token_utils.get_encoding_for_model")
     def test_count_tokens_with_mock_encoding(self, mock_get_encoding):
         """モックエンコーディングを使用したトークン数テスト"""
         mock_encoding = Mock()
@@ -156,7 +156,7 @@ class TestCountTokensForMessages:
         assert isinstance(result, int)
         assert result > 0
 
-    @patch("utilities.token_utils.get_encoding_for_model")
+    @patch("llm_applications_library.utilities.token_utils.get_encoding_for_model")
     def test_count_tokens_for_messages_unknown_model(self, mock_get_encoding):
         """未知モデルでのトークン数テスト"""
         mock_encoding = Mock()
@@ -219,7 +219,7 @@ class TestSplitTextByTokens:
         assert len(result) >= 1
         assert all(isinstance(chunk, str) for chunk in result)
 
-    @patch("utilities.token_utils.count_tokens")
+    @patch("llm_applications_library.utilities.token_utils.count_tokens")
     def test_split_text_by_tokens_mock_count(self, mock_count_tokens):
         """モックを使用したトークン分割テスト"""
         # 最初の呼び出しで長いテキスト、その後は短いテキストとして扱う
@@ -239,7 +239,7 @@ class TestSplitTextByTokens:
 class TestGetTextTailByTokens:
     """_get_text_tail_by_tokens関数のテスト"""
 
-    @patch("utilities.token_utils.get_encoding_for_model")
+    @patch("llm_applications_library.utilities.token_utils.get_encoding_for_model")
     def test_get_text_tail_by_tokens_short_text(self, mock_get_encoding):
         """短いテキストの末尾取得テスト"""
         mock_encoding = Mock()
@@ -251,7 +251,7 @@ class TestGetTextTailByTokens:
 
         assert result == "short text"
 
-    @patch("utilities.token_utils.get_encoding_for_model")
+    @patch("llm_applications_library.utilities.token_utils.get_encoding_for_model")
     def test_get_text_tail_by_tokens_long_text(self, mock_get_encoding):
         """長いテキストの末尾取得テスト"""
         mock_encoding = Mock()
@@ -304,7 +304,7 @@ class TestSplitParagraphBySentences:
 class TestForceSplitByChars:
     """_force_split_by_chars関数のテスト"""
 
-    @patch("utilities.token_utils.get_encoding_for_model")
+    @patch("llm_applications_library.utilities.token_utils.get_encoding_for_model")
     def test_force_split_by_chars(self, mock_get_encoding):
         """文字による強制分割テスト"""
         mock_encoding = Mock()
@@ -317,7 +317,7 @@ class TestForceSplitByChars:
         assert len(result) == 4  # 10トークンを3トークンずつ分割すると4チャンク
         assert result == ["chunk1", "chunk2", "chunk3", "chunk4"]
 
-    @patch("utilities.token_utils.get_encoding_for_model")
+    @patch("llm_applications_library.utilities.token_utils.get_encoding_for_model")
     def test_force_split_by_chars_exact_fit(self, mock_get_encoding):
         """ちょうどのサイズでの強制分割テスト"""
         mock_encoding = Mock()
@@ -391,7 +391,7 @@ class TestTokenUtilsIntegration:
 
     def test_all_functions_importable(self):
         """すべての関数がインポート可能であることを確認"""
-        from utilities.token_utils import (
+        from llm_applications_library.utilities.token_utils import (
             get_encoding_for_model,
             count_tokens,
             count_tokens_for_messages,
