@@ -15,12 +15,11 @@ logger = logging.getLogger(__name__)
 # Check Claude availability
 try:
     import anthropic  # noqa: F401
+
     CLAUDE_AVAILABLE = True
 except ImportError:
     CLAUDE_AVAILABLE = False
-    logger.warning(
-        "Claude generators not available - anthropic package not installed"
-    )
+    logger.warning("Claude generators not available - anthropic package not installed")
 
 
 class ProviderType(StrEnum):
@@ -192,6 +191,7 @@ class GeneratorFactory:
                 )
             # Import here to avoid unbound variable issues
             from .claude_custom_generator import RetryClaudeGenerator
+
             return RetryClaudeGenerator(
                 model=model,
                 api_key=api_key,
@@ -234,6 +234,7 @@ class GeneratorFactory:
                 )
             # Import here to avoid unbound variable issues
             from .claude_custom_generator import ClaudeVisionGenerator
+
             return ClaudeVisionGenerator(
                 model=model,
                 api_key=api_key,
@@ -297,4 +298,3 @@ def create_generator(
         return GeneratorFactory.create_vision_generator(model, api_key)
     else:
         raise ValueError(f"Unknown generator type: {generator_type}")
-
