@@ -15,6 +15,7 @@ class RetryConfig(BaseModel):
 class Model(StrEnum):
     """llm model names."""
 
+    # OpenAI models
     GPT_4O = "gpt-4o"
     GPT_4O_MINI = "gpt-4o-mini"
     GPT_4_1 = "gpt-4.1"
@@ -24,6 +25,13 @@ class Model(StrEnum):
     GPT_4_TURBO = "gpt-4-turbo"
     GPT_3_5_TURBO = "gpt-3.5-turbo"
 
+    # Anthropic Claude models (verified working models)
+    CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20241022"  # Might need higher tier access
+    CLAUDE_3_5_HAIKU = "claude-3-5-haiku-20241022"
+    CLAUDE_3_OPUS = "claude-3-opus-20240229"
+    CLAUDE_3_SONNET = "claude-3-sonnet-20240229"
+    CLAUDE_3_HAIKU = "claude-3-haiku-20240307"  # Confirmed working
+
 
 class OpenAIGenerationConfig(BaseModel):
     temperature: float = 0.2
@@ -31,9 +39,27 @@ class OpenAIGenerationConfig(BaseModel):
     response_format: dict[str, str] = {"type": "text"}
 
 
+class ClaudeGenerationConfig(BaseModel):
+    """Claude API用の生成設定"""
+
+    temperature: float = 0.2
+    max_tokens: int = 4096
+    top_p: float = 1.0
+    top_k: int | None = None
+    stop_sequences: list[str] | None = None
+
+
 class GPTConfig(BaseModel):
     """Configuration for GPT API calls."""
 
     model: str = Model.GPT_4_1
     generation_config: OpenAIGenerationConfig = OpenAIGenerationConfig()
+    retry_config: RetryConfig = RetryConfig()
+
+
+class ClaudeConfig(BaseModel):
+    """Configuration for Claude API calls."""
+
+    model: str = Model.CLAUDE_3_5_SONNET
+    generation_config: ClaudeGenerationConfig = ClaudeGenerationConfig()
     retry_config: RetryConfig = RetryConfig()
