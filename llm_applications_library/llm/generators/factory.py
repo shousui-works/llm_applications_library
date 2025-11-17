@@ -46,40 +46,6 @@ class TextGenerator(Protocol):
 VisionGenerator = Any
 
 
-class ConfiguredGenerator:
-    """Universal wrapper for generators with presets."""
-
-    def __init__(self, generator, presets, generator_type):
-        self._generator = generator
-        self._presets = presets
-        self._generator_type = generator_type
-        # Copy attributes from base generator
-        for attr in dir(generator):
-            if not attr.startswith("_") and not callable(getattr(generator, attr)):
-                setattr(self, attr, getattr(generator, attr))
-
-    def run(self, *args, **kwargs):
-        """Run with preset merging."""
-        if self._generator_type == "text":
-            # For text: merge generation_kwargs
-            if "generation_kwargs" in self._presets:
-                merged_kwargs = self._presets["generation_kwargs"].copy()
-                if "generation_kwargs" in kwargs:
-                    merged_kwargs.update(kwargs["generation_kwargs"])
-                kwargs["generation_kwargs"] = merged_kwargs
-            return self._generator.run(*args, **kwargs)
-
-        elif self._generator_type == "vision":
-            # For vision: use model_config if not provided
-            if "model_config" in self._presets and "model_config" not in kwargs:
-                kwargs["model_config"] = self._presets["model_config"]
-            return self._generator.run(*args, **kwargs)
-
-    def __getattr__(self, name):
-        """Delegate to wrapped generator."""
-        return getattr(self._generator, name)
-
-
 def detect_provider_from_model(model: str) -> ProviderType:
     """
     Detect which provider (OpenAI or Claude) a model belongs to.
@@ -193,6 +159,7 @@ class GeneratorFactory:
         model: str,
         api_key: str | None = None,
         retry_config: RetryConfig | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ) -> TextGenerator:
         """
         Create a text generator for the specified model.
@@ -201,6 +168,7 @@ class GeneratorFactory:
             model: Model name (from Model enum or custom string)
             api_key: API key for the provider (optional, can use env vars)
             retry_config: Retry configuration (optional)
+            generation_kwargs: Default generation parameters (optional)
 
         Returns:
             Appropriate text generator instance
@@ -212,7 +180,7 @@ class GeneratorFactory:
         provider = detect_provider_from_model(model)
 
         if provider == ProviderType.OPENAI:
-            return RetryOpenAIGenerator(
+            base_generator = RetryOpenAIGenerator(
                 model=model,
                 api_key=api_key,
                 retry_config=retry_config,
@@ -226,7 +194,7 @@ class GeneratorFactory:
             # Import here to avoid unbound variable issues
             from .claude_custom_generator import RetryClaudeGenerator
 
-            return RetryClaudeGenerator(
+            base_generator = RetryClaudeGenerator(
                 model=model,
                 api_key=api_key,
                 retry_config=retry_config,
@@ -234,10 +202,44 @@ class GeneratorFactory:
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
+        # If generation_kwargs provided, wrap with preset functionality
+        if generation_kwargs:
+
+            class PresetTextGenerator:
+                def __init__(self, generator, preset_kwargs):
+                    self._generator = generator
+                    self._preset_kwargs = preset_kwargs
+                    # Copy attributes from base generator
+                    for attr in dir(generator):
+                        if not attr.startswith("_") and not callable(
+                            getattr(generator, attr)
+                        ):
+                            setattr(self, attr, getattr(generator, attr))
+
+                def run(
+                    self,
+                    prompt: str,
+                    system_prompt: str | None = None,
+                    generation_kwargs: dict[str, Any] | None = None,
+                ) -> dict[str, Any]:
+                    # Merge preset kwargs with provided kwargs
+                    merged_kwargs = self._preset_kwargs.copy()
+                    if generation_kwargs:
+                        merged_kwargs.update(generation_kwargs)
+                    return self._generator.run(prompt, system_prompt, merged_kwargs)
+
+                def __getattr__(self, name):
+                    return getattr(self._generator, name)
+
+            return PresetTextGenerator(base_generator, generation_kwargs)
+        else:
+            return base_generator
+
     @staticmethod
     def create_vision_generator(
         model: str,
         api_key: str | None = None,
+        model_config: Union[GPTConfig, ClaudeConfig] | None = None,
     ) -> VisionGenerator:
         """
         Create a vision generator for the specified model.
@@ -245,6 +247,7 @@ class GeneratorFactory:
         Args:
             model: Model name (from Model enum or custom string)
             api_key: API key for the provider (optional, can use env vars)
+            model_config: Default model configuration (optional)
 
         Returns:
             Appropriate vision generator instance
@@ -256,7 +259,7 @@ class GeneratorFactory:
         provider = detect_provider_from_model(model)
 
         if provider == ProviderType.OPENAI:
-            return OpenAIVisionGenerator(
+            base_generator = OpenAIVisionGenerator(
                 model=model,
                 api_key=api_key,
             )
@@ -269,12 +272,60 @@ class GeneratorFactory:
             # Import here to avoid unbound variable issues
             from .claude_custom_generator import ClaudeVisionGenerator
 
-            return ClaudeVisionGenerator(
+            base_generator = ClaudeVisionGenerator(
                 model=model,
                 api_key=api_key,
             )
         else:
             raise ValueError(f"Unsupported provider: {provider}")
+
+        # If model_config provided, wrap with preset functionality
+        if model_config:
+
+            class PresetVisionGenerator:
+                def __init__(self, generator, preset_config):
+                    self._generator = generator
+                    self._preset_config = preset_config
+                    # Copy attributes from base generator
+                    for attr in dir(generator):
+                        if not attr.startswith("_") and not callable(
+                            getattr(generator, attr)
+                        ):
+                            setattr(self, attr, getattr(generator, attr))
+
+                def run(
+                    self,
+                    base64_image: str,
+                    mime_type: str,
+                    prompt: str,
+                    model_config: Union[GPTConfig, ClaudeConfig] | None = None,
+                    system_prompt: str | None = None,
+                ) -> dict[str, Any]:
+                    # Use preset config if none provided
+                    config_to_use = model_config or self._preset_config
+                    return self._generator.run(
+                        base64_image, mime_type, prompt, config_to_use, system_prompt
+                    )
+
+                def run_from_file(
+                    self,
+                    image_path: str,
+                    prompt: str,
+                    model_config: Union[GPTConfig, ClaudeConfig] | None = None,
+                    system_prompt: str | None = None,
+                ) -> dict[str, Any]:
+                    # Use preset config if none provided
+                    config_to_use = model_config or self._preset_config
+                    return self._generator.run_from_file(
+                        image_path, prompt, config_to_use, system_prompt
+                    )
+
+                def __getattr__(self, name):
+                    return getattr(self._generator, name)
+
+            return PresetVisionGenerator(base_generator, model_config)
+        else:
+            return base_generator
 
     @staticmethod
     def get_provider_for_model(model: str) -> ProviderType:
@@ -313,48 +364,29 @@ def create_generator(
     generator_type: str = "text",
     api_key: str | None = None,
     retry_config: RetryConfig | None = None,
-    **preset_kwargs,
 ) -> Union[TextGenerator, VisionGenerator]:
     """
-    Convenience function to create a generator with optional presets.
+    Convenience function to create a generator.
 
     Args:
         model: Model name
         generator_type: Type of generator ("text" or "vision")
         api_key: API key (optional)
         retry_config: Retry configuration (optional)
-        **preset_kwargs: Preset parameters (generation_kwargs for text, model_config for vision)
 
     Returns:
-        Generator instance with optional preset parameters
+        Appropriate generator instance
 
     Examples:
         # Basic usage
         gen = create_generator("gpt-4o", "text")
 
-        # Text with preset generation parameters
-        gen = create_generator(
-            "claude-3-haiku", "text",
-            generation_kwargs={"temperature": 0.8, "max_tokens": 200}
-        )
-
-        # Vision with preset model config
-        config = GPTConfig(model="gpt-4o")
-        vision_gen = create_generator("gpt-4o", "vision", model_config=config)
+        # With custom API key
+        gen = create_generator("claude-3-haiku", "text", api_key="your-key")
     """
-
-    # Create base generator
     if generator_type == "text":
-        base_generator = GeneratorFactory.create_text_generator(
-            model, api_key, retry_config
-        )
+        return GeneratorFactory.create_text_generator(model, api_key, retry_config)
     elif generator_type == "vision":
-        base_generator = GeneratorFactory.create_vision_generator(model, api_key)
+        return GeneratorFactory.create_vision_generator(model, api_key)
     else:
         raise ValueError(f"Unknown generator type: {generator_type}")
-
-    # Wrap with presets if provided
-    if preset_kwargs:
-        return ConfiguredGenerator(base_generator, preset_kwargs, generator_type)
-    else:
-        return base_generator
