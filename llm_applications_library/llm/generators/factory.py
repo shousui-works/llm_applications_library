@@ -46,6 +46,40 @@ class TextGenerator(Protocol):
 VisionGenerator = Any
 
 
+class ConfiguredGenerator:
+    """Universal wrapper for generators with presets."""
+
+    def __init__(self, generator, presets, generator_type):
+        self._generator = generator
+        self._presets = presets
+        self._generator_type = generator_type
+        # Copy attributes from base generator
+        for attr in dir(generator):
+            if not attr.startswith("_") and not callable(getattr(generator, attr)):
+                setattr(self, attr, getattr(generator, attr))
+
+    def run(self, *args, **kwargs):
+        """Run with preset merging."""
+        if self._generator_type == "text":
+            # For text: merge generation_kwargs
+            if "generation_kwargs" in self._presets:
+                merged_kwargs = self._presets["generation_kwargs"].copy()
+                if "generation_kwargs" in kwargs:
+                    merged_kwargs.update(kwargs["generation_kwargs"])
+                kwargs["generation_kwargs"] = merged_kwargs
+            return self._generator.run(*args, **kwargs)
+
+        elif self._generator_type == "vision":
+            # For vision: use model_config if not provided
+            if "model_config" in self._presets and "model_config" not in kwargs:
+                kwargs["model_config"] = self._presets["model_config"]
+            return self._generator.run(*args, **kwargs)
+
+    def __getattr__(self, name):
+        """Delegate to wrapped generator."""
+        return getattr(self._generator, name)
+
+
 def detect_provider_from_model(model: str) -> ProviderType:
     """
     Detect which provider (OpenAI or Claude) a model belongs to.
@@ -279,22 +313,48 @@ def create_generator(
     generator_type: str = "text",
     api_key: str | None = None,
     retry_config: RetryConfig | None = None,
+    **preset_kwargs,
 ) -> Union[TextGenerator, VisionGenerator]:
     """
-    Convenience function to create a generator.
+    Convenience function to create a generator with optional presets.
 
     Args:
         model: Model name
         generator_type: Type of generator ("text" or "vision")
         api_key: API key (optional)
         retry_config: Retry configuration (optional)
+        **preset_kwargs: Preset parameters (generation_kwargs for text, model_config for vision)
 
     Returns:
-        Appropriate generator instance
+        Generator instance with optional preset parameters
+
+    Examples:
+        # Basic usage
+        gen = create_generator("gpt-4o", "text")
+
+        # Text with preset generation parameters
+        gen = create_generator(
+            "claude-3-haiku", "text",
+            generation_kwargs={"temperature": 0.8, "max_tokens": 200}
+        )
+
+        # Vision with preset model config
+        config = GPTConfig(model="gpt-4o")
+        vision_gen = create_generator("gpt-4o", "vision", model_config=config)
     """
+
+    # Create base generator
     if generator_type == "text":
-        return GeneratorFactory.create_text_generator(model, api_key, retry_config)
+        base_generator = GeneratorFactory.create_text_generator(
+            model, api_key, retry_config
+        )
     elif generator_type == "vision":
-        return GeneratorFactory.create_vision_generator(model, api_key)
+        base_generator = GeneratorFactory.create_vision_generator(model, api_key)
     else:
         raise ValueError(f"Unknown generator type: {generator_type}")
+
+    # Wrap with presets if provided
+    if preset_kwargs:
+        return ConfiguredGenerator(base_generator, preset_kwargs, generator_type)
+    else:
+        return base_generator

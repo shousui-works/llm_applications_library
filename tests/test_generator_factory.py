@@ -306,6 +306,34 @@ class TestConvenienceFunctions:
             create_generator("gpt-4o")
             mock_create.assert_called_once_with("gpt-4o", None, None)
 
+    def test_generator_run_with_generation_kwargs(self):
+        """Test that generators can use generation_kwargs in run method."""
+        with patch(
+            "llm_applications_library.llm.generators.factory.GeneratorFactory.create_text_generator"
+        ) as mock_create:
+            # Mock generator with run method
+            mock_generator = MagicMock()
+            mock_generator.run.return_value = {
+                "replies": ["Generated text"],
+                "meta": [{"temperature": 0.8}],
+            }
+            mock_create.return_value = mock_generator
+
+            # Create generator and test run with generation_kwargs
+            gen = create_generator("gpt-4o", "text")
+            result = gen.run(
+                "Test prompt", generation_kwargs={"temperature": 0.8, "max_tokens": 100}
+            )
+
+            # Verify the run method was called with generation_kwargs
+            mock_generator.run.assert_called_once_with(
+                "Test prompt", generation_kwargs={"temperature": 0.8, "max_tokens": 100}
+            )
+
+            # Verify result structure
+            assert result["replies"] == ["Generated text"]
+            assert result["meta"][0]["temperature"] == 0.8
+
 
 class TestEdgeCases:
     """Test edge cases and error scenarios."""
