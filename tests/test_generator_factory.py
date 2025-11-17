@@ -306,33 +306,41 @@ class TestConvenienceFunctions:
             create_generator("gpt-4o")
             mock_create.assert_called_once_with("gpt-4o", None, None)
 
-    def test_generator_run_with_generation_kwargs(self):
-        """Test that generators can use generation_kwargs in run method."""
+    def test_factory_create_text_generator_with_generation_kwargs(self):
+        """Test that create_text_generator can accept generation_kwargs."""
         with patch(
-            "llm_applications_library.llm.generators.factory.GeneratorFactory.create_text_generator"
-        ) as mock_create:
-            # Mock generator with run method
-            mock_generator = MagicMock()
-            mock_generator.run.return_value = {
-                "replies": ["Generated text"],
-                "meta": [{"temperature": 0.8}],
-            }
-            mock_create.return_value = mock_generator
+            "llm_applications_library.llm.generators.factory.RetryOpenAIGenerator"
+        ) as mock_openai_gen:
+            mock_instance = MagicMock()
+            mock_openai_gen.return_value = mock_instance
 
-            # Create generator and test run with generation_kwargs
-            gen = create_generator("gpt-4o", "text")
-            result = gen.run(
-                "Test prompt", generation_kwargs={"temperature": 0.8, "max_tokens": 100}
+            generation_kwargs = {"temperature": 0.8, "max_tokens": 100}
+            generator = GeneratorFactory.create_text_generator(
+                "gpt-4o", generation_kwargs=generation_kwargs
             )
 
-            # Verify the run method was called with generation_kwargs
-            mock_generator.run.assert_called_once_with(
-                "Test prompt", generation_kwargs={"temperature": 0.8, "max_tokens": 100}
+            # Should create a PresetTextGenerator wrapper
+            assert hasattr(generator, "_generator")
+            assert hasattr(generator, "_preset_kwargs")
+
+    def test_factory_create_vision_generator_with_model_config(self):
+        """Test that create_vision_generator can accept model_config."""
+        with patch(
+            "llm_applications_library.llm.generators.factory.OpenAIVisionGenerator"
+        ) as mock_openai_vision:
+            mock_instance = MagicMock()
+            mock_openai_vision.return_value = mock_instance
+
+            from llm_applications_library.llm.generators.schema import GPTConfig
+
+            model_config = GPTConfig()
+            generator = GeneratorFactory.create_vision_generator(
+                "gpt-4o", model_config=model_config
             )
 
-            # Verify result structure
-            assert result["replies"] == ["Generated text"]
-            assert result["meta"][0]["temperature"] == 0.8
+            # Should create a PresetVisionGenerator wrapper
+            assert hasattr(generator, "_generator")
+            assert hasattr(generator, "_preset_config")
 
 
 class TestEdgeCases:
