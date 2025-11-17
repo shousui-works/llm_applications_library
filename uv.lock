@@ -16,6 +16,25 @@ wheels = [
 ]
 
 [[package]]
+name = "anthropic"
+version = "0.73.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "docstring-parser" },
+    { name = "httpx" },
+    { name = "jiter" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f0/07/f550112c3f5299d02f06580577f602e8a112b1988ad7c98ac1a8f7292d7e/anthropic-0.73.0.tar.gz", hash = "sha256:30f0d7d86390165f86af6ca7c3041f8720bb2e1b0e12a44525c8edfdbd2c5239", size = 425168, upload-time = "2025-11-14T18:47:52.635Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/15/b1/5d4d3f649e151e58dc938cf19c4d0cd19fca9a986879f30fea08a7b17138/anthropic-0.73.0-py3-none-any.whl", hash = "sha256:0d56cd8b3ca3fea9c9b5162868bdfd053fbc189b8b56d4290bd2d427b56db769", size = 367839, upload-time = "2025-11-14T18:47:51.195Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -550,6 +569,7 @@ wheels = [
 name = "llm-applications-library"
 source = { editable = "." }
 dependencies = [
+    { name = "anthropic" },
     { name = "google-cloud-storage" },
     { name = "haystack-ai" },
     { name = "openai" },
@@ -564,11 +584,15 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "anthropic" },
     { name = "google-cloud-storage" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "tox" },
+]
+claude = [
+    { name = "anthropic" },
 ]
 dev = [
     { name = "pytest" },
@@ -578,6 +602,10 @@ dev = [
 ]
 gcs = [
     { name = "google-cloud-storage" },
+]
+integration = [
+    { name = "anthropic" },
+    { name = "pytest" },
 ]
 
 [package.dev-dependencies]
@@ -591,15 +619,19 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anthropic", specifier = ">=0.73.0" },
+    { name = "anthropic", marker = "extra == 'claude'", specifier = ">=0.40.0" },
+    { name = "anthropic", marker = "extra == 'integration'", specifier = ">=0.40.0" },
     { name = "google-cloud-storage", specifier = ">=3.3.0" },
     { name = "google-cloud-storage", marker = "extra == 'gcs'", specifier = ">=3.3.0" },
     { name = "haystack-ai", specifier = ">=2.16.1" },
-    { name = "llm-applications-library", extras = ["dev", "gcs"], marker = "extra == 'all'" },
+    { name = "llm-applications-library", extras = ["claude", "dev", "gcs"], marker = "extra == 'all'" },
     { name = "openai", specifier = ">=1.50.0" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pymupdf", specifier = ">=1.26.3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "pytest", marker = "extra == 'integration'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "python-docx", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
@@ -608,7 +640,7 @@ requires-dist = [
     { name = "tiktoken", specifier = ">=0.11.0" },
     { name = "tox", marker = "extra == 'dev'", specifier = ">=4.27.0" },
 ]
-provides-extras = ["gcs", "dev", "all"]
+provides-extras = ["gcs", "claude", "dev", "integration", "all"]
 
 [package.metadata.requires-dev]
 dev = [
