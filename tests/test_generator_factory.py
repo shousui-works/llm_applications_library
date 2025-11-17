@@ -171,7 +171,9 @@ class TestGeneratorFactory:
         )
 
     @pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude not available")
-    @patch("llm_applications_library.llm.generators.claude_custom_generator.RetryClaudeGenerator")
+    @patch(
+        "llm_applications_library.llm.generators.claude_custom_generator.RetryClaudeGenerator"
+    )
     def test_create_claude_text_generator(self, mock_claude_gen):
         """Test creation of Claude text generator when available."""
         mock_instance = MagicMock()
@@ -201,7 +203,9 @@ class TestGeneratorFactory:
         assert generator == mock_instance
 
     @pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude not available")
-    @patch("llm_applications_library.llm.generators.claude_custom_generator.ClaudeVisionGenerator")
+    @patch(
+        "llm_applications_library.llm.generators.claude_custom_generator.ClaudeVisionGenerator"
+    )
     def test_create_claude_vision_generator(self, mock_claude_vision):
         """Test creation of Claude vision generator when available."""
         mock_instance = MagicMock()
