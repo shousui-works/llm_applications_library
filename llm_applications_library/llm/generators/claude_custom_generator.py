@@ -142,6 +142,7 @@ class ClaudeVisionGenerator:
         self,
         api_key: str | None = None,
         model: str = "claude-3-haiku-20240307",  # Default to verified working model
+        retry_config: RetryConfig | None = None,
     ):
         """
         ClaudeVisionGeneratorを初期化
@@ -149,6 +150,7 @@ class ClaudeVisionGenerator:
         Args:
             api_key: Anthropic API key
             model: Claude model name (Vision対応モデルのみ)
+            retry_config: Retry configuration
         """
         if anthropic is None:
             raise ImportError(
@@ -158,6 +160,7 @@ class ClaudeVisionGenerator:
 
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self.model = model
+        self.retry_config = retry_config or RetryConfig()
 
         if not self.api_key:
             raise ValueError(
@@ -272,10 +275,17 @@ class ClaudeVisionGenerator:
             }
         ]
 
+        # Use retry_config from constructor if not provided in model_config
+        retry_config_to_use = (
+            model_config.retry_config
+            if hasattr(model_config, "retry_config")
+            else self.retry_config
+        )
+
         response = self._chat_completion(
             messages=messages,
             system_prompt=system_prompt,
-            retry_config=model_config.retry_config,
+            retry_config=retry_config_to_use,
             **model_config.generation_config.model_dump(),
         )
 

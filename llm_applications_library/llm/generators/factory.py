@@ -2,9 +2,15 @@
 
 import logging
 from typing import Any, Protocol, Union
-from enum import StrEnum
 
-from .schema import Model, RetryConfig, GPTConfig, ClaudeConfig
+from .schema import (
+    Model,
+    RetryConfig,
+    GPTConfig,
+    ClaudeConfig,
+    ProviderType,
+    get_provider_api_key,
+)
 from .openai_custom_generator import (
     RetryOpenAIGenerator,
     OpenAIVisionGenerator,
@@ -20,13 +26,6 @@ try:
 except ImportError:
     CLAUDE_AVAILABLE = False
     logger.warning("Claude generators not available - anthropic package not installed")
-
-
-class ProviderType(StrEnum):
-    """LLM Provider types."""
-
-    OPENAI = "openai"
-    CLAUDE = "claude"
 
 
 class TextGenerator(Protocol):
@@ -60,14 +59,19 @@ def detect_provider_from_model(model: str) -> ProviderType:
         ValueError: If model provider cannot be determined
     """
     model_lower = model.lower()
+    logger.debug(
+        f"Detecting provider for model: '{model}' (lowercase: '{model_lower}')"
+    )
 
     # Check if it's a known enum value
     try:
         model_enum = Model(model)
         model_name = model_enum.value
+        logger.debug(f"Model found in enum with value: '{model_name}'")
     except ValueError:
         # Custom model name, use the original
         model_name = model
+        logger.debug(f"Model not in enum, using original name: '{model_name}'")
 
     # OpenAI model patterns
     openai_patterns = [
@@ -85,15 +89,25 @@ def detect_provider_from_model(model: str) -> ProviderType:
     ]
 
     # Claude model patterns
-    claude_patterns = ["claude-", "anthropic"]
+    claude_patterns = [
+        "claude-",
+        "claude-3",
+        "claude-3-5",
+        "claude-3-opus",
+        "claude-3-sonnet",
+        "claude-3-haiku",
+        "anthropic",
+    ]
 
     # Check patterns
     for pattern in openai_patterns:
         if pattern in model_lower:
+            logger.debug(f"Model '{model}' matched OpenAI pattern: '{pattern}'")
             return ProviderType.OPENAI
 
     for pattern in claude_patterns:
         if pattern in model_lower:
+            logger.debug(f"Model '{model}' matched Claude pattern: '{pattern}'")
             return ProviderType.CLAUDE
 
     # Check against known model values
@@ -117,12 +131,75 @@ def detect_provider_from_model(model: str) -> ProviderType:
     ]
 
     if model_name in [m.value for m in openai_models]:
+        logger.debug(f"Model '{model}' found in OpenAI model list")
         return ProviderType.OPENAI
 
     if model_name in [m.value for m in claude_models]:
+        logger.debug(f"Model '{model}' found in Claude model list")
         return ProviderType.CLAUDE
 
+    logger.error(
+        f"Cannot detect provider for model: '{model}'. Checked patterns: OpenAI={openai_patterns}, Claude={claude_patterns}"
+    )
     raise ValueError(f"Cannot detect provider for model: {model}")
+
+
+def debug_model_detection(model: str) -> dict[str, Any]:
+    """
+    Debug function to show detailed model detection information.
+
+    Args:
+        model: Model name to debug
+
+    Returns:
+        Dictionary with detection details
+    """
+    model_lower = model.lower()
+    result = {
+        "input_model": model,
+        "lowercase_model": model_lower,
+        "matched_patterns": [],
+        "checked_patterns": {
+            "openai": [
+                "gpt-",
+                "chatgpt",
+                "text-davinci",
+                "text-curie",
+                "text-babbage",
+                "text-ada",
+                "code-davinci",
+                "code-cushman",
+                "whisper",
+                "dall-e",
+                "tts",
+            ],
+            "claude": [
+                "claude-",
+                "claude-3",
+                "claude-3-5",
+                "claude-3-opus",
+                "claude-3-sonnet",
+                "claude-3-haiku",
+                "anthropic",
+            ],
+        },
+    }
+
+    # Check patterns
+    for pattern in result["checked_patterns"]["openai"]:
+        if pattern in model_lower:
+            result["matched_patterns"].append(f"OpenAI: {pattern}")
+
+    for pattern in result["checked_patterns"]["claude"]:
+        if pattern in model_lower:
+            result["matched_patterns"].append(f"Claude: {pattern}")
+
+    try:
+        result["detected_provider"] = detect_provider_from_model(model).value
+    except ValueError as e:
+        result["detection_error"] = str(e)
+
+    return result
 
 
 def get_default_config_for_provider(
@@ -157,7 +234,6 @@ class GeneratorFactory:
     @staticmethod
     def create_text_generator(
         model: str,
-        api_key: str | None = None,
         retry_config: RetryConfig | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> TextGenerator:
@@ -166,18 +242,20 @@ class GeneratorFactory:
 
         Args:
             model: Model name (from Model enum or custom string)
-            api_key: API key for the provider (optional, can use env vars)
             retry_config: Retry configuration (optional)
             generation_kwargs: Default generation parameters (optional)
 
         Returns:
-            Appropriate text generator instance
+            Appropriate text generator instance (API key auto-detected from environment)
 
         Raises:
             ValueError: If model provider cannot be determined or is unsupported
             ImportError: If required packages for the provider are not installed
         """
         provider = detect_provider_from_model(model)
+
+        # Get appropriate API key from environment
+        api_key = get_provider_api_key(provider)
 
         if provider == ProviderType.OPENAI:
             base_generator = RetryOpenAIGenerator(
@@ -238,19 +316,19 @@ class GeneratorFactory:
     @staticmethod
     def create_vision_generator(
         model: str,
-        api_key: str | None = None,
         model_config: Union[GPTConfig, ClaudeConfig] | None = None,
+        retry_config: RetryConfig | None = None,
     ) -> VisionGenerator:
         """
         Create a vision generator for the specified model.
 
         Args:
             model: Model name (from Model enum or custom string)
-            api_key: API key for the provider (optional, can use env vars)
             model_config: Default model configuration (optional)
+            retry_config: Retry configuration (optional)
 
         Returns:
-            Appropriate vision generator instance
+            Appropriate vision generator instance (API key auto-detected from environment)
 
         Raises:
             ValueError: If model provider cannot be determined or is unsupported
@@ -258,10 +336,16 @@ class GeneratorFactory:
         """
         provider = detect_provider_from_model(model)
 
+        # Get appropriate API key from environment
+        api_key = get_provider_api_key(provider)
+
+        # Vision generators now support retry_config directly
+
         if provider == ProviderType.OPENAI:
             base_generator = OpenAIVisionGenerator(
                 model=model,
                 api_key=api_key,
+                retry_config=retry_config,
             )
         elif provider == ProviderType.CLAUDE:
             if not CLAUDE_AVAILABLE:
@@ -275,6 +359,7 @@ class GeneratorFactory:
             base_generator = ClaudeVisionGenerator(
                 model=model,
                 api_key=api_key,
+                retry_config=retry_config,
             )
         else:
             raise ValueError(f"Unsupported provider: {provider}")
@@ -362,7 +447,6 @@ class GeneratorFactory:
 def create_generator(
     model: str,
     generator_type: str = "text",
-    api_key: str | None = None,
     retry_config: RetryConfig | None = None,
 ) -> Union[TextGenerator, VisionGenerator]:
     """
@@ -371,22 +455,24 @@ def create_generator(
     Args:
         model: Model name
         generator_type: Type of generator ("text" or "vision")
-        api_key: API key (optional)
         retry_config: Retry configuration (optional)
 
     Returns:
-        Appropriate generator instance
+        Appropriate generator instance (API keys auto-detected from environment)
 
     Examples:
-        # Basic usage
+        # Basic usage (API keys from environment variables)
         gen = create_generator("gpt-4o", "text")
 
-        # With custom API key
-        gen = create_generator("claude-3-haiku", "text", api_key="your-key")
+        # With retry configuration
+        retry_config = RetryConfig(max_attempts=5)
+        gen = create_generator("claude-3-haiku", "text", retry_config)
     """
     if generator_type == "text":
-        return GeneratorFactory.create_text_generator(model, api_key, retry_config)
+        return GeneratorFactory.create_text_generator(model, retry_config=retry_config)
     elif generator_type == "vision":
-        return GeneratorFactory.create_vision_generator(model, api_key)
+        return GeneratorFactory.create_vision_generator(
+            model, retry_config=retry_config
+        )
     else:
         raise ValueError(f"Unknown generator type: {generator_type}")

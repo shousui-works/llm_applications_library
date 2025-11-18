@@ -95,9 +95,12 @@ class RetryOpenAIGenerator:
 
 
 class OpenAIVisionGenerator:
-    def __init__(self, model, api_key: str | None = None):
+    def __init__(
+        self, model, api_key: str | None = None, retry_config: RetryConfig | None = None
+    ):
         self.model = model
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.retry_config = retry_config or RetryConfig()
 
     def _chat_completion(
         self,
@@ -182,11 +185,18 @@ class OpenAIVisionGenerator:
             },
         ]
 
+        # Use retry_config from constructor if not provided in model_config
+        retry_config_to_use = (
+            model_config.retry_config
+            if hasattr(model_config, "retry_config")
+            else self.retry_config
+        )
+
         return {
             "replies": self._chat_completion(
                 messages=messages,
                 api_key=self.api_key,
-                retry_config=model_config.retry_config,
+                retry_config=retry_config_to_use,
                 **model_config.generation_config.model_dump(),
             )
         }

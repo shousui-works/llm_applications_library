@@ -2,6 +2,12 @@ from enum import StrEnum
 
 from pydantic import BaseModel
 
+try:
+    from pydantic import BaseSettings
+except ImportError:
+    # Fallback for older pydantic versions
+    from pydantic_settings import BaseSettings
+
 
 class RetryConfig(BaseModel):
     """リトライ設定"""
@@ -10,6 +16,43 @@ class RetryConfig(BaseModel):
     initial_wait: float = 1.0
     max_wait: float = 60.0
     multiplier: float = 2.0
+
+
+class ProviderType(StrEnum):
+    """LLM Provider types."""
+
+    OPENAI = "openai"
+    CLAUDE = "claude"
+
+
+class APIKeySettings(BaseSettings):
+    """API key settings from environment variables."""
+
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+        "extra": "ignore",  # Ignore extra env vars
+    }
+
+
+def get_api_key_settings() -> APIKeySettings:
+    """Get API key settings from environment variables."""
+    return APIKeySettings()
+
+
+def get_provider_api_key(provider: ProviderType) -> str | None:
+    """Get appropriate API key for the given provider."""
+    settings = get_api_key_settings()
+
+    if provider == ProviderType.OPENAI:
+        return settings.openai_api_key
+    elif provider == ProviderType.CLAUDE:
+        return settings.anthropic_api_key
+    else:
+        return None
 
 
 class Model(StrEnum):
