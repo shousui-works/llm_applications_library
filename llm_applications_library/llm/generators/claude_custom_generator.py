@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any
 
-from ..generators.schema import RetryConfig
+from ..generators.schema import RetryConfig, ClaudeGenerationConfig
 from ...utilities.claude_retry import claude_retry
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,11 @@ class RetryClaudeGenerator:
                 kwargs["system"] = system_prompt
 
             if generation_kwargs:
-                kwargs.update(generation_kwargs)
+                # Validate using Pydantic model directly
+                validated_config = ClaudeGenerationConfig.model_validate(
+                    generation_kwargs
+                )
+                kwargs.update(validated_config.model_dump(exclude_none=True))
 
             response = client.messages.create(**kwargs)
 
@@ -122,17 +126,24 @@ class RetryClaudeGenerator:
             )
             return _run_with_retry()
         except Exception as e:
-            logger.error(f"Claude generation failed after retries: {e}")
-            # エラー時のフォールバック応答
-            return {
-                "replies": [],
-                "meta": [
-                    {
-                        "error": str(e),
-                        "retry_config": self.retry_config.model_dump(),
-                    }
-                ],
-            }
+            # Validation errors should be raised immediately (not retried)
+            if "validation error" in str(e) or "Extra inputs are not permitted" in str(
+                e
+            ):
+                logger.error(f"Claude parameter validation failed: {e}")
+                raise
+            else:
+                logger.error(f"Claude generation failed after retries: {e}")
+                # エラー時のフォールバック応答
+                return {
+                    "replies": [],
+                    "meta": [
+                        {
+                            "error": str(e),
+                            "retry_config": self.retry_config.model_dump(),
+                        }
+                    ],
+                }
 
 
 class ClaudeVisionGenerator:
@@ -275,8 +286,12 @@ class ClaudeVisionGenerator:
         # Use retry_config from constructor
         retry_config_to_use = self.retry_config
 
-        # Set default generation parameters if not provided
-        generation_params = generation_kwargs or {}
+        # Validate and set default generation parameters
+        if generation_kwargs:
+            validated_config = ClaudeGenerationConfig.model_validate(generation_kwargs)
+            generation_params = validated_config.model_dump(exclude_none=True)
+        else:
+            generation_params = {}
 
         # Set sensible defaults if not specified
         if "temperature" not in generation_params:

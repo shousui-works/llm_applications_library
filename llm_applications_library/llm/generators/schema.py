@@ -69,7 +69,7 @@ class Model(StrEnum):
     GPT_3_5_TURBO = "gpt-3.5-turbo"
 
     # Anthropic Claude models (verified working models)
-    CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20241022"  # Might need higher tier access
+    CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20241022"  # Higher tier access
     CLAUDE_3_5_HAIKU = "claude-3-5-haiku-20241022"
     CLAUDE_3_OPUS = "claude-3-opus-20240229"
     CLAUDE_3_SONNET = "claude-3-sonnet-20240229"
@@ -77,19 +77,37 @@ class Model(StrEnum):
 
 
 class OpenAIGenerationConfig(BaseModel):
-    temperature: float = 0.2
-    max_tokens: int = 4096
-    response_format: dict[str, str] = {"type": "text"}
+    """OpenAI API用の生成設定（全ての有効なパラメーターを含む）"""
+
+    temperature: float | None = None
+    max_tokens: int | None = None
+    top_p: float | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    response_format: dict | None = None
+    seed: int | None = None
+    stop: str | list[str] | None = None
+    stream: bool | None = None
+    n: int | None = None
+    logit_bias: dict | None = None
+    user: str | None = None
+    tool_choice: str | dict | None = None
+    tools: list[dict] | None = None
+
+    model_config = {"extra": "forbid"}  # 未定義フィールドを拒否
 
 
 class ClaudeGenerationConfig(BaseModel):
-    """Claude API用の生成設定"""
+    """Claude API用の生成設定（全ての有効なパラメーターを含む）"""
 
-    temperature: float = 0.2
-    max_tokens: int = 4096
-    top_p: float = 1.0
+    temperature: float | None = None
+    max_tokens: int | None = None
+    top_p: float | None = None
     top_k: int | None = None
     stop_sequences: list[str] | None = None
+    stream: bool | None = None
+
+    model_config = {"extra": "forbid"}  # 未定義フィールドを拒否
 
 
 class GPTConfig(BaseModel):
