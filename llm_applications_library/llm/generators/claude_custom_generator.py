@@ -27,16 +27,16 @@ class RetryClaudeGenerator:
 
     def __init__(
         self,
-        api_key: str | None = None,
         model: str = "claude-3-haiku-20240307",  # Default to verified working model
+        api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ):
         """
         RetryClaudeGeneratorを初期化
 
         Args:
-            api_key: Anthropic API key
             model: Claude model name
+            api_key: Anthropic API key
             retry_config: リトライ設定（RetryConfigオブジェクト）
         """
         if anthropic is None:
@@ -140,16 +140,16 @@ class ClaudeVisionGenerator:
 
     def __init__(
         self,
-        api_key: str | None = None,
         model: str = "claude-3-haiku-20240307",  # Default to verified working model
+        api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ):
         """
         ClaudeVisionGeneratorを初期化
 
         Args:
-            api_key: Anthropic API key
             model: Claude model name (Vision対応モデルのみ)
+            api_key: Anthropic API key
             retry_config: Retry configuration
         """
         if anthropic is None:
