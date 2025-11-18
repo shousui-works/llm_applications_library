@@ -382,7 +382,7 @@ wheels = [
 
 [[package]]
 name = "haystack-ai"
-version = "2.16.1"
+version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -404,9 +404,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/10/49/bc131880d9103234b4e1e8cf83c9b0c23d8c0bb5da6b20ae68a37766f6ab/haystack_ai-2.16.1.tar.gz", hash = "sha256:75dfddadccf636b8f357e9d76f8ca3f399a7cffcfb9c5b5bf2f7a1b435535f43", size = 385997, upload-time = "2025-07-29T14:07:11.504Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/e7/473337a8450265e647e355b180d556d6eec01db6a732a1f9dd5542999b8c/haystack_ai-2.20.0.tar.gz", hash = "sha256:6f34048706b6e74e7f1b3026320253d4f55568f48398e0511434983d547207b6", size = 423901, upload-time = "2025-11-13T15:06:29.843Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ab/b7/a7928188e790d381dd7f02c2c94b0fcbbaa2213bd2e5b1220e24298db1ee/haystack_ai-2.16.1-py3-none-any.whl", hash = "sha256:43fa142e3c37a8f049ea45dee07fc9d424801cfea3f4063d945bc30ce4b5def7", size = 575327, upload-time = "2025-07-29T14:07:08.98Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/53/1728ca7bf1dd60c428d49095860363b569cf6b58b1b38483bfee0ac44b60/haystack_ai-2.20.0-py3-none-any.whl", hash = "sha256:0900090898dce092cee1d0c90f0e22be9ec1bd57cbc4f8793a56f6e96481531a", size = 624721, upload-time = "2025-11-13T15:06:28.024Z" },
 ]
 
 [[package]]
@@ -625,7 +625,7 @@ requires-dist = [
     { name = "anthropic", marker = "extra == 'integration'", specifier = ">=0.40.0" },
     { name = "google-cloud-storage", specifier = ">=3.3.0" },
     { name = "google-cloud-storage", marker = "extra == 'gcs'", specifier = ">=3.3.0" },
-    { name = "haystack-ai", specifier = ">=2.16.1" },
+    { name = "haystack-ai", specifier = ">=2.20.0" },
     { name = "llm-applications-library", extras = ["claude", "dev", "gcs"], marker = "extra == 'all'" },
     { name = "openai", specifier = ">=1.50.0" },
     { name = "pandas", specifier = ">=2.3.1" },
