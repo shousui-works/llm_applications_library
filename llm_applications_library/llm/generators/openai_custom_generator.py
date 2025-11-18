@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Any
 import openai
-from .schema import GPTConfig, RetryConfig
+from .schema import RetryConfig
 
 from .retry_util import openai_retry
 
@@ -155,48 +155,55 @@ class OpenAIVisionGenerator:
         self,
         base64_image: str,
         mime_type: str,
-        prompt: str,
-        model_config: GPTConfig,
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """OpenAI Vision APIを使用して画像またはPDFを解析する
 
         Args:
-            image_path (str): 解析する画像ファイルまたはPDFファイルのパス
-            system_prompt (str): システムプロンプト
-            user_prompt_template (str): ユーザープロンプトテンプレート
-            model_config (GPTConfig): モデル設定
-            **kargs: テンプレートに渡す変数
+            base64_image (str): Base64エンコードされた画像データ
+            mime_type (str): 画像のMIMEタイプ
+            system_prompt (str, optional): 分析指示プロンプト
+            generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
             dict[str, Any]: レスポンス辞書
         """
 
-        # PDFファイルの場合
-        messages = [
+        # Build messages with optional system prompt
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        messages.append(
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": prompt},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
                     },
                 ],
-            },
-        ]
-
-        # Use retry_config from constructor if not provided in model_config
-        retry_config_to_use = (
-            model_config.retry_config
-            if hasattr(model_config, "retry_config")
-            else self.retry_config
+            }
         )
+
+        # Use retry_config from constructor
+        retry_config_to_use = self.retry_config
+
+        # Set default generation parameters if not provided
+        generation_params = generation_kwargs or {}
+
+        # Set sensible defaults if not specified
+        if "temperature" not in generation_params:
+            generation_params["temperature"] = 0.1
+        if "max_tokens" not in generation_params:
+            generation_params["max_tokens"] = 4096
 
         return {
             "replies": self._chat_completion(
                 messages=messages,
                 api_key=self.api_key,
                 retry_config=retry_config_to_use,
-                **model_config.generation_config.model_dump(),
+                **generation_params,
             )
         }

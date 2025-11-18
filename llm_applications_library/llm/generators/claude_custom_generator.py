@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any
 
-from ..generators.schema import ClaudeConfig, RetryConfig
+from ..generators.schema import RetryConfig
 from ...utilities.claude_retry import claude_retry
 
 logger = logging.getLogger(__name__)
@@ -27,16 +27,16 @@ class RetryClaudeGenerator:
 
     def __init__(
         self,
-        api_key: str | None = None,
         model: str = "claude-3-haiku-20240307",  # Default to verified working model
+        api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ):
         """
         RetryClaudeGeneratorを初期化
 
         Args:
-            api_key: Anthropic API key
             model: Claude model name
+            api_key: Anthropic API key
             retry_config: リトライ設定（RetryConfigオブジェクト）
         """
         if anthropic is None:
@@ -140,16 +140,16 @@ class ClaudeVisionGenerator:
 
     def __init__(
         self,
-        api_key: str | None = None,
         model: str = "claude-3-haiku-20240307",  # Default to verified working model
+        api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ):
         """
         ClaudeVisionGeneratorを初期化
 
         Args:
-            api_key: Anthropic API key
             model: Claude model name (Vision対応モデルのみ)
+            api_key: Anthropic API key
             retry_config: Retry configuration
         """
         if anthropic is None:
@@ -240,18 +240,16 @@ class ClaudeVisionGenerator:
         self,
         base64_image: str,
         mime_type: str,
-        prompt: str,
-        model_config: ClaudeConfig,
         system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Claude Vision APIを使用して画像を解析する
 
         Args:
             base64_image: Base64エンコードされた画像データ
             mime_type: 画像のMIMEタイプ（例: "image/jpeg", "image/png"）
-            prompt: ユーザープロンプト
-            model_config: モデル設定
-            system_prompt: システムプロンプト（オプション）
+            system_prompt: 分析指示プロンプト（オプション）
+            generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
             dict[str, Any]: レスポンス辞書
@@ -262,7 +260,6 @@ class ClaudeVisionGenerator:
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": prompt},
                     {
                         "type": "image",
                         "source": {
@@ -275,18 +272,23 @@ class ClaudeVisionGenerator:
             }
         ]
 
-        # Use retry_config from constructor if not provided in model_config
-        retry_config_to_use = (
-            model_config.retry_config
-            if hasattr(model_config, "retry_config")
-            else self.retry_config
-        )
+        # Use retry_config from constructor
+        retry_config_to_use = self.retry_config
+
+        # Set default generation parameters if not provided
+        generation_params = generation_kwargs or {}
+
+        # Set sensible defaults if not specified
+        if "temperature" not in generation_params:
+            generation_params["temperature"] = 0.1
+        if "max_tokens" not in generation_params:
+            generation_params["max_tokens"] = 4096
 
         response = self._chat_completion(
             messages=messages,
             system_prompt=system_prompt,
             retry_config=retry_config_to_use,
-            **model_config.generation_config.model_dump(),
+            **generation_params,
         )
 
         return {"replies": [response]}
@@ -294,17 +296,15 @@ class ClaudeVisionGenerator:
     def run_from_file(
         self,
         image_path: str,
-        prompt: str,
-        model_config: ClaudeConfig,
         system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """ファイルパスから画像を読み込んでClaude Vision APIで解析
 
         Args:
             image_path: 画像ファイルのパス
-            prompt: ユーザープロンプト
-            model_config: モデル設定
-            system_prompt: システムプロンプト（オプション）
+            system_prompt: 分析指示プロンプト（オプション）
+            generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
             dict[str, Any]: レスポンス辞書
@@ -327,7 +327,6 @@ class ClaudeVisionGenerator:
         return self.run(
             base64_image=base64_image,
             mime_type=mime_type,
-            prompt=prompt,
-            model_config=model_config,
             system_prompt=system_prompt,
+            generation_kwargs=generation_kwargs,
         )

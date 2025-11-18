@@ -4,11 +4,7 @@ from unittest.mock import Mock, patch
 from llm_applications_library.llm.generators.openai_custom_generator import (
     OpenAIVisionGenerator,
 )
-from llm_applications_library.llm.generators.schema import (
-    GPTConfig,
-    OpenAIGenerationConfig,
-    RetryConfig,
-)
+from llm_applications_library.llm.generators.schema import RetryConfig
 
 
 class TestOpenAIVisionGenerator:
@@ -68,12 +64,6 @@ class TestOpenAIVisionGenerator:
         """runメソッドのテスト"""
         generator = OpenAIVisionGenerator(model="gpt-4o", api_key="test-key")
 
-        model_config = GPTConfig(
-            model="gpt-4o",
-            generation_config=OpenAIGenerationConfig(temperature=0.5),
-            retry_config=RetryConfig(max_attempts=3),
-        )
-
         expected_result = {
             "success": True,
             "content": "Image analysis result",
@@ -87,8 +77,8 @@ class TestOpenAIVisionGenerator:
             result = generator.run(
                 base64_image="test_base64_data",
                 mime_type="image/png",
-                prompt="Analyze this image",
-                model_config=model_config,
+                system_prompt="Analyze this image",
+                generation_kwargs={"temperature": 0.1, "max_tokens": 1000},
             )
 
             assert "replies" in result
@@ -98,21 +88,23 @@ class TestOpenAIVisionGenerator:
             mock_chat.assert_called_once()
             call_kwargs = mock_chat.call_args.kwargs
 
-            # メッセージ構造の確認
+            # メッセージ構造の確認 (system_prompt + user message with image)
             messages = call_kwargs["messages"]
-            assert len(messages) == 1
-            assert messages[0]["role"] == "user"
-            assert len(messages[0]["content"]) == 2
+            assert len(messages) == 2
 
-            # テキスト部分の確認
-            assert messages[0]["content"][0]["type"] == "text"
-            assert messages[0]["content"][0]["text"] == "Analyze this image"
+            # System message
+            assert messages[0]["role"] == "system"
+            assert messages[0]["content"] == "Analyze this image"
+
+            # User message with image
+            assert messages[1]["role"] == "user"
+            assert len(messages[1]["content"]) == 1
 
             # 画像部分の確認
-            assert messages[0]["content"][1]["type"] == "image_url"
+            assert messages[1]["content"][0]["type"] == "image_url"
             assert (
                 "data:image/png;base64,test_base64_data"
-                in (messages[0]["content"][1]["image_url"]["url"])
+                in (messages[1]["content"][0]["image_url"]["url"])
             )
 
     def test_component_functionality(self):

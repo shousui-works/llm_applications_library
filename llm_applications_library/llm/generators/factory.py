@@ -382,27 +382,20 @@ class GeneratorFactory:
                     self,
                     base64_image: str,
                     mime_type: str,
-                    prompt: str,
-                    model_config: Union[GPTConfig, ClaudeConfig] | None = None,
                     system_prompt: str | None = None,
+                    generation_kwargs: dict[str, Any] | None = None,
                 ) -> dict[str, Any]:
-                    # Use preset config if none provided
-                    config_to_use = model_config or self._preset_config
-                    return self._generator.run(
-                        base64_image, mime_type, prompt, config_to_use, system_prompt
-                    )
+                    # Merge preset config with provided generation_kwargs
+                    merged_kwargs = {}
+                    if hasattr(self._preset_config, "generation_config"):
+                        merged_kwargs.update(
+                            self._preset_config.generation_config.model_dump()
+                        )
+                    if generation_kwargs:
+                        merged_kwargs.update(generation_kwargs)
 
-                def run_from_file(
-                    self,
-                    image_path: str,
-                    prompt: str,
-                    model_config: Union[GPTConfig, ClaudeConfig] | None = None,
-                    system_prompt: str | None = None,
-                ) -> dict[str, Any]:
-                    # Use preset config if none provided
-                    config_to_use = model_config or self._preset_config
-                    return self._generator.run_from_file(
-                        image_path, prompt, config_to_use, system_prompt
+                    return self._generator.run(
+                        base64_image, mime_type, system_prompt, merged_kwargs
                     )
 
                 def __getattr__(self, name):
