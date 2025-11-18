@@ -94,7 +94,7 @@ class OpenAIGenerationConfig(BaseModel):
     tool_choice: str | dict | None = None
     tools: list[dict] | None = None
 
-    model_config = {"extra": "forbid"}  # 未定義フィールドを拒否
+    model_config = {"extra": "ignore"}  # 未定義フィールドを無視
 
 
 class ClaudeGenerationConfig(BaseModel):
@@ -107,7 +107,7 @@ class ClaudeGenerationConfig(BaseModel):
     stop_sequences: list[str] | None = None
     stream: bool | None = None
 
-    model_config = {"extra": "forbid"}  # 未定義フィールドを拒否
+    model_config = {"extra": "ignore"}  # 未定義フィールドを無視
 
 
 class GPTConfig(BaseModel):

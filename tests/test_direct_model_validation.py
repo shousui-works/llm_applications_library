@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import Mock, patch
-from pydantic import ValidationError
 
 from llm_applications_library.llm.generators.schema import (
     OpenAIGenerationConfig,
@@ -30,19 +29,21 @@ class TestDirectModelValidation:
         assert result["top_p"] == 0.9
         assert result["frequency_penalty"] == 0.1
 
-    def test_openai_invalid_params_raises_error(self):
-        """Test OpenAI model validation with invalid parameters."""
+    def test_openai_invalid_params_are_ignored(self):
+        """Test OpenAI model validation ignores invalid parameters."""
         invalid_kwargs = {
             "temperature": 0.7,
-            "top_k": 50,  # Claude-specific param
-            "invalid_param": "value",
+            "top_k": 50,  # Claude-specific param - ignored
+            "invalid_param": "value",  # Invalid param - ignored
         }
 
-        with pytest.raises(ValidationError) as exc_info:
-            OpenAIGenerationConfig.model_validate(invalid_kwargs)
+        config = OpenAIGenerationConfig.model_validate(invalid_kwargs)
+        result = config.model_dump(exclude_none=True)
 
-        error_msg = str(exc_info.value)
-        assert "Extra inputs are not permitted" in error_msg
+        # Only valid OpenAI parameters should be included
+        assert result == {"temperature": 0.7}
+        assert "top_k" not in result
+        assert "invalid_param" not in result
 
     def test_claude_valid_params(self):
         """Test Claude model validation with valid parameters."""
@@ -61,19 +62,21 @@ class TestDirectModelValidation:
         assert result["top_k"] == 50
         assert result["stop_sequences"] == ["END"]
 
-    def test_claude_invalid_params_raises_error(self):
-        """Test Claude model validation with invalid parameters."""
+    def test_claude_invalid_params_are_ignored(self):
+        """Test Claude model validation ignores invalid parameters."""
         invalid_kwargs = {
             "temperature": 0.7,
-            "frequency_penalty": 0.1,  # OpenAI-specific param
-            "invalid_param": "value",
+            "frequency_penalty": 0.1,  # OpenAI-specific param - ignored
+            "invalid_param": "value",  # Invalid param - ignored
         }
 
-        with pytest.raises(ValidationError) as exc_info:
-            ClaudeGenerationConfig.model_validate(invalid_kwargs)
+        config = ClaudeGenerationConfig.model_validate(invalid_kwargs)
+        result = config.model_dump(exclude_none=True)
 
-        error_msg = str(exc_info.value)
-        assert "Extra inputs are not permitted" in error_msg
+        # Only valid Claude parameters should be included
+        assert result == {"temperature": 0.7}
+        assert "frequency_penalty" not in result
+        assert "invalid_param" not in result
 
     def test_type_coercion(self):
         """Test automatic type coercion."""
@@ -142,9 +145,9 @@ class TestIntegrationWithGenerators:
             result = generator.run("test", generation_kwargs={"temperature": 0.7})
             assert "replies" in result
 
-            # Invalid params should raise ValidationError
-            with pytest.raises(ValidationError):
-                generator.run("test", generation_kwargs={"invalid_param": "value"})
+            # Invalid params should be ignored
+            result = generator.run("test", generation_kwargs={"invalid_param": "value"})
+            assert "replies" in result
 
     def test_claude_generator_direct_validation(self):
         """Test direct validation in Claude generator context."""
@@ -164,6 +167,7 @@ class TestIntegrationWithGenerators:
             except Exception as e:
                 pytest.fail(f"Valid params should not raise error: {e}")
 
-            # Invalid params should raise ValidationError during validation
-            with pytest.raises(ValidationError):
-                ClaudeGenerationConfig.model_validate({"invalid_param": "value"})
+            # Invalid params should be ignored during validation
+            config = ClaudeGenerationConfig.model_validate({"invalid_param": "value"})
+            result = config.model_dump(exclude_none=True)
+            assert "invalid_param" not in result
