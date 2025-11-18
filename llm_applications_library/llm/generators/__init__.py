@@ -23,6 +23,10 @@ from .factory import (
     detect_provider_from_model,
     debug_model_detection,
 )
+from .pipeline_factory import (
+    create_pipeline,
+    PipelineCreationError,
+)
 
 __all__ = [
     # OpenAI
@@ -45,6 +49,9 @@ __all__ = [
     "create_generator",
     "detect_provider_from_model",
     "debug_model_detection",
+    # Pipeline Factory
+    "create_pipeline",
+    "PipelineCreationError",
 ]
 
 # Claude generators - optional import to handle missing anthropic dependency
