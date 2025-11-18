@@ -102,6 +102,70 @@ class TestProviderDetection:
             provider = detect_provider_from_model(model)
             assert provider == expected_provider
 
+    def test_problematic_claude_model_detection(self):
+        """Test detection of specific Claude model that was causing issues."""
+        problematic_model = "claude-3-5-sonnet-20241022"
+        provider = detect_provider_from_model(problematic_model)
+        assert provider == ProviderType.CLAUDE
+
+    def test_debug_model_detection_function(self):
+        """Test the debug function for model detection."""
+        from llm_applications_library.llm.generators import debug_model_detection
+
+        # Test Claude model
+        debug_result = debug_model_detection("claude-3-5-sonnet-20241022")
+        assert debug_result["detected_provider"] == "claude"
+        assert len(debug_result["matched_patterns"]) > 0
+        assert any("Claude:" in pattern for pattern in debug_result["matched_patterns"])
+
+        # Test OpenAI model
+        debug_result_openai = debug_model_detection("gpt-4o")
+        assert debug_result_openai["detected_provider"] == "openai"
+        assert len(debug_result_openai["matched_patterns"]) > 0
+        assert any(
+            "OpenAI:" in pattern for pattern in debug_result_openai["matched_patterns"]
+        )
+
+    def test_api_key_settings_functionality(self):
+        """Test API key settings with BaseSettings."""
+        import os
+        from llm_applications_library.llm.generators import (
+            get_api_key_settings,
+            get_provider_api_key,
+        )
+
+        # Set test environment variables
+        original_openai = os.environ.get("OPENAI_API_KEY")
+        original_anthropic = os.environ.get("ANTHROPIC_API_KEY")
+
+        try:
+            os.environ["OPENAI_API_KEY"] = "test-openai-key"
+            os.environ["ANTHROPIC_API_KEY"] = "test-anthropic-key"
+
+            # Test settings retrieval
+            settings = get_api_key_settings()
+            assert settings.openai_api_key == "test-openai-key"
+            assert settings.anthropic_api_key == "test-anthropic-key"
+
+            # Test provider-specific key retrieval
+            openai_key = get_provider_api_key(ProviderType.OPENAI)
+            claude_key = get_provider_api_key(ProviderType.CLAUDE)
+
+            assert openai_key == "test-openai-key"
+            assert claude_key == "test-anthropic-key"
+
+        finally:
+            # Restore original environment variables
+            if original_openai is not None:
+                os.environ["OPENAI_API_KEY"] = original_openai
+            else:
+                os.environ.pop("OPENAI_API_KEY", None)
+
+            if original_anthropic is not None:
+                os.environ["ANTHROPIC_API_KEY"] = original_anthropic
+            else:
+                os.environ.pop("ANTHROPIC_API_KEY", None)
+
 
 class TestDefaultConfiguration:
     """Test default configuration creation."""
@@ -136,11 +200,13 @@ class TestDefaultConfiguration:
 class TestGeneratorFactory:
     """Test the GeneratorFactory class."""
 
+    @patch("llm_applications_library.llm.generators.factory.get_provider_api_key")
     @patch("llm_applications_library.llm.generators.factory.RetryOpenAIGenerator")
-    def test_create_openai_text_generator(self, mock_openai_gen):
+    def test_create_openai_text_generator(self, mock_openai_gen, mock_get_api_key):
         """Test creation of OpenAI text generator."""
         mock_instance = MagicMock()
         mock_openai_gen.return_value = mock_instance
+        mock_get_api_key.return_value = None  # Mock API key retrieval
 
         generator = GeneratorFactory.create_text_generator("gpt-4o")
 
@@ -151,33 +217,36 @@ class TestGeneratorFactory:
         )
         assert generator == mock_instance
 
+    @patch("llm_applications_library.llm.generators.factory.get_provider_api_key")
     @patch("llm_applications_library.llm.generators.factory.RetryOpenAIGenerator")
-    def test_create_openai_text_generator_with_params(self, mock_openai_gen):
+    def test_create_openai_text_generator_with_params(
+        self, mock_openai_gen, mock_get_api_key
+    ):
         """Test creation of OpenAI text generator with parameters."""
         mock_instance = MagicMock()
         mock_openai_gen.return_value = mock_instance
+        mock_get_api_key.return_value = "auto-detected-key"
 
         retry_config = RetryConfig(max_attempts=5)
-        api_key = "test-key"
 
-        GeneratorFactory.create_text_generator(
-            "gpt-4o", api_key=api_key, retry_config=retry_config
-        )
+        GeneratorFactory.create_text_generator("gpt-4o", retry_config=retry_config)
 
         mock_openai_gen.assert_called_once_with(
             model="gpt-4o",
-            api_key=api_key,
+            api_key="auto-detected-key",
             retry_config=retry_config,
         )
 
     @pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude not available")
+    @patch("llm_applications_library.llm.generators.factory.get_provider_api_key")
     @patch(
         "llm_applications_library.llm.generators.claude_custom_generator.RetryClaudeGenerator"
     )
-    def test_create_claude_text_generator(self, mock_claude_gen):
+    def test_create_claude_text_generator(self, mock_claude_gen, mock_get_api_key):
         """Test creation of Claude text generator when available."""
         mock_instance = MagicMock()
         mock_claude_gen.return_value = mock_instance
+        mock_get_api_key.return_value = None  # Mock API key retrieval
 
         generator = GeneratorFactory.create_text_generator("claude-3-haiku-20240307")
 
@@ -188,34 +257,40 @@ class TestGeneratorFactory:
         )
         assert generator == mock_instance
 
+    @patch("llm_applications_library.llm.generators.factory.get_provider_api_key")
     @patch("llm_applications_library.llm.generators.factory.OpenAIVisionGenerator")
-    def test_create_openai_vision_generator(self, mock_openai_vision):
+    def test_create_openai_vision_generator(self, mock_openai_vision, mock_get_api_key):
         """Test creation of OpenAI vision generator."""
         mock_instance = MagicMock()
         mock_openai_vision.return_value = mock_instance
+        mock_get_api_key.return_value = None  # Mock API key retrieval
 
         generator = GeneratorFactory.create_vision_generator("gpt-4o")
 
         mock_openai_vision.assert_called_once_with(
             model="gpt-4o",
             api_key=None,
+            retry_config=None,
         )
         assert generator == mock_instance
 
     @pytest.mark.skipif(not CLAUDE_AVAILABLE, reason="Claude not available")
+    @patch("llm_applications_library.llm.generators.factory.get_provider_api_key")
     @patch(
         "llm_applications_library.llm.generators.claude_custom_generator.ClaudeVisionGenerator"
     )
-    def test_create_claude_vision_generator(self, mock_claude_vision):
+    def test_create_claude_vision_generator(self, mock_claude_vision, mock_get_api_key):
         """Test creation of Claude vision generator when available."""
         mock_instance = MagicMock()
         mock_claude_vision.return_value = mock_instance
+        mock_get_api_key.return_value = None  # Mock API key retrieval
 
         generator = GeneratorFactory.create_vision_generator("claude-3-haiku-20240307")
 
         mock_claude_vision.assert_called_once_with(
             model="claude-3-haiku-20240307",
             api_key=None,
+            retry_config=None,
         )
         assert generator == mock_instance
 
@@ -274,9 +349,9 @@ class TestConvenienceFunctions:
         mock_create_text.return_value = mock_generator
 
         retry_config = RetryConfig()
-        result = create_generator("gpt-4o", "text", "test-key", retry_config)
+        result = create_generator("gpt-4o", "text", retry_config)
 
-        mock_create_text.assert_called_once_with("gpt-4o", "test-key", retry_config)
+        mock_create_text.assert_called_once_with("gpt-4o", retry_config=retry_config)
         assert result == mock_generator
 
     @patch(
@@ -287,9 +362,9 @@ class TestConvenienceFunctions:
         mock_generator = MagicMock()
         mock_create_vision.return_value = mock_generator
 
-        result = create_generator("gpt-4o", "vision", "test-key")
+        result = create_generator("gpt-4o", "vision")
 
-        mock_create_vision.assert_called_once_with("gpt-4o", "test-key")
+        mock_create_vision.assert_called_once_with("gpt-4o", retry_config=None)
         assert result == mock_generator
 
     def test_create_generator_invalid_type_raises_error(self):
@@ -304,7 +379,7 @@ class TestConvenienceFunctions:
         ) as mock_create:
             mock_create.return_value = MagicMock()
             create_generator("gpt-4o")
-            mock_create.assert_called_once_with("gpt-4o", None, None)
+            mock_create.assert_called_once_with("gpt-4o", retry_config=None)
 
     def test_factory_create_text_generator_with_generation_kwargs(self):
         """Test that create_text_generator can accept generation_kwargs."""
@@ -365,12 +440,14 @@ class TestEdgeCases:
         provider = detect_provider_from_model("claude-3-5-sonnet-20241022")
         assert provider == ProviderType.CLAUDE
 
+    @patch("llm_applications_library.llm.generators.factory.get_provider_api_key")
     @patch("llm_applications_library.llm.generators.factory.RetryOpenAIGenerator")
-    def test_none_api_key_handling(self, mock_openai_gen):
+    def test_none_api_key_handling(self, mock_openai_gen, mock_get_api_key):
         """Test that None API key is handled properly."""
         mock_openai_gen.return_value = MagicMock()
+        mock_get_api_key.return_value = None  # Mock API key retrieval
 
-        GeneratorFactory.create_text_generator("gpt-4o", api_key=None)
+        GeneratorFactory.create_text_generator("gpt-4o")
 
         mock_openai_gen.assert_called_once_with(
             model="gpt-4o",

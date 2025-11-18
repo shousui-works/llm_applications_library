@@ -119,8 +119,45 @@ def main():
 
     print()
 
-    # Example 7: Actual usage pattern (commented out - requires real API keys)
-    print("7. Real Usage Pattern (commented - requires API keys):")
+    # Example 7: generation_kwargs usage patterns
+    print("7. Using generation_kwargs (demo - no API calls):")
+    print("""
+    # Basic text generation with custom parameters
+    gen = create_generator("gpt-4o", "text")
+    result = gen.run(
+        "Write a short poem",
+        generation_kwargs={
+            "temperature": 0.8,      # More creative
+            "max_tokens": 100        # Limit length
+        }
+    )
+
+    # Claude with different parameters
+    claude_gen = create_generator("claude-3-haiku", "text")
+    result = claude_gen.run(
+        "Explain quantum computing",
+        system_prompt="You are a computer science professor",
+        generation_kwargs={
+            "temperature": 0.2,      # More focused
+            "max_tokens": 300
+        }
+    )
+
+    # OpenAI with response format (JSON mode)
+    openai_gen = create_generator("gpt-4o", "text")
+    result = openai_gen.run(
+        "Generate a user profile",
+        generation_kwargs={
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"}
+        }
+    )
+    """)
+
+    print()
+
+    # Example 8: Actual usage pattern (commented out - requires real API keys)
+    print("8. Real Usage Pattern (commented - requires API keys):")
     print("""
     # Real usage with environment variables:
     # os.environ['OPENAI_API_KEY'] = 'your-openai-key'

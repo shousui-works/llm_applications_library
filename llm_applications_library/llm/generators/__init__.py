@@ -12,12 +12,16 @@ from .schema import (
     ClaudeConfig,
     ClaudeGenerationConfig,
     Model,
+    ProviderType,
+    APIKeySettings,
+    get_api_key_settings,
+    get_provider_api_key,
 )
 from .factory import (
     GeneratorFactory,
     create_generator,
     detect_provider_from_model,
-    ProviderType,
+    debug_model_detection,
 )
 
 __all__ = [
@@ -32,11 +36,15 @@ __all__ = [
     "ClaudeConfig",
     "ClaudeGenerationConfig",
     "Model",
+    "ProviderType",
+    "APIKeySettings",
+    "get_api_key_settings",
+    "get_provider_api_key",
     # Factory
     "GeneratorFactory",
     "create_generator",
     "detect_provider_from_model",
-    "ProviderType",
+    "debug_model_detection",
 ]
 
 # Claude generators - optional import to handle missing anthropic dependency
