@@ -155,7 +155,6 @@ class OpenAIVisionGenerator:
         self,
         base64_image: str,
         mime_type: str,
-        model_config: GPTConfig,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -164,9 +163,8 @@ class OpenAIVisionGenerator:
         Args:
             base64_image (str): Base64エンコードされた画像データ
             mime_type (str): 画像のMIMEタイプ
-            model_config (GPTConfig): モデル設定
             system_prompt (str, optional): 分析指示プロンプト
-            generation_kwargs (dict, optional): 生成用の追加パラメータ
+            generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
             dict[str, Any]: レスポンス辞書
@@ -187,17 +185,17 @@ class OpenAIVisionGenerator:
             ],
         })
 
-        # Use retry_config from constructor if not provided in model_config
-        retry_config_to_use = (
-            model_config.retry_config
-            if hasattr(model_config, "retry_config")
-            else self.retry_config
-        )
+        # Use retry_config from constructor
+        retry_config_to_use = self.retry_config
 
-        # Merge generation_kwargs with model config
-        generation_params = model_config.generation_config.model_dump()
-        if generation_kwargs:
-            generation_params.update(generation_kwargs)
+        # Set default generation parameters if not provided
+        generation_params = generation_kwargs or {}
+
+        # Set sensible defaults if not specified
+        if "temperature" not in generation_params:
+            generation_params["temperature"] = 0.1
+        if "max_tokens" not in generation_params:
+            generation_params["max_tokens"] = 4096
 
         return {
             "replies": self._chat_completion(
