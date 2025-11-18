@@ -70,8 +70,9 @@ class TestProviderDetection:
         # Test Claude enum models
         claude_enums = [
             Model.CLAUDE_3_HAIKU,
-            Model.CLAUDE_3_SONNET,
+            Model.CLAUDE_3_7_SONNET,  # Updated from CLAUDE_3_SONNET
             Model.CLAUDE_3_5_SONNET,
+            Model.CLAUDE_SONNET_4_5,  # Latest model
         ]
 
         for model_enum in claude_enums:

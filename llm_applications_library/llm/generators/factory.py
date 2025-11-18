@@ -123,11 +123,15 @@ def detect_provider_from_model(model: str) -> ProviderType:
     ]
 
     claude_models = [
-        Model.CLAUDE_3_5_SONNET,
+        Model.CLAUDE_SONNET_4_5,
+        Model.CLAUDE_OPUS_4_1,
+        Model.CLAUDE_OPUS_4,
+        Model.CLAUDE_SONNET_4,
+        Model.CLAUDE_3_7_SONNET,
         Model.CLAUDE_3_5_HAIKU,
         Model.CLAUDE_3_OPUS,
-        Model.CLAUDE_3_SONNET,
         Model.CLAUDE_3_HAIKU,
+        Model.CLAUDE_3_5_SONNET,  # Legacy alias
     ]
 
     if model_name in [m.value for m in openai_models]:

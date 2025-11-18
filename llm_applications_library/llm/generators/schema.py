@@ -69,11 +69,18 @@ class Model(StrEnum):
     GPT_3_5_TURBO = "gpt-3.5-turbo"
 
     # Anthropic Claude models (verified working models)
-    CLAUDE_3_5_SONNET = "claude-3-5-sonnet-20241022"  # Higher tier access
+    CLAUDE_SONNET_4_5 = "claude-sonnet-4-5-20250929"  # Latest and most powerful
+    CLAUDE_OPUS_4_1 = "claude-opus-4-1-20250805"
+    CLAUDE_OPUS_4 = "claude-opus-4-20250514"
+    CLAUDE_SONNET_4 = "claude-sonnet-4-20250514"
+    CLAUDE_3_7_SONNET = "claude-3-7-sonnet-20250219"
     CLAUDE_3_5_HAIKU = "claude-3-5-haiku-20241022"
     CLAUDE_3_OPUS = "claude-3-opus-20240229"
-    CLAUDE_3_SONNET = "claude-3-sonnet-20240229"
-    CLAUDE_3_HAIKU = "claude-3-haiku-20240307"  # Confirmed working
+    CLAUDE_3_HAIKU = "claude-3-haiku-20240307"
+
+    # Legacy aliases for backward compatibility
+    CLAUDE_3_5_SONNET = CLAUDE_SONNET_4_5  # Redirect to latest
+    CLAUDE_3_SONNET = CLAUDE_3_7_SONNET  # Redirect to 3.7 version
 
 
 class OpenAIGenerationConfig(BaseModel):
@@ -121,6 +128,6 @@ class GPTConfig(BaseModel):
 class ClaudeConfig(BaseModel):
     """Configuration for Claude API calls."""
 
-    model: str = Model.CLAUDE_3_5_SONNET
+    model: str = Model.CLAUDE_SONNET_4_5  # 最新・最強のClaude Sonnet 4.5を使用
     generation_config: ClaudeGenerationConfig = ClaudeGenerationConfig()
     retry_config: RetryConfig = RetryConfig()
