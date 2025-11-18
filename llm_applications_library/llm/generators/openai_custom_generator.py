@@ -155,7 +155,6 @@ class OpenAIVisionGenerator:
         self,
         base64_image: str,
         mime_type: str,
-        prompt: str,
         model_config: GPTConfig,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
@@ -165,9 +164,8 @@ class OpenAIVisionGenerator:
         Args:
             base64_image (str): Base64エンコードされた画像データ
             mime_type (str): 画像のMIMEタイプ
-            prompt (str): ユーザープロンプト
             model_config (GPTConfig): モデル設定
-            system_prompt (str, optional): システムプロンプト
+            system_prompt (str, optional): 分析指示プロンプト
             generation_kwargs (dict, optional): 生成用の追加パラメータ
 
         Returns:
@@ -182,7 +180,6 @@ class OpenAIVisionGenerator:
         messages.append({
             "role": "user",
             "content": [
-                {"type": "text", "text": prompt},
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
