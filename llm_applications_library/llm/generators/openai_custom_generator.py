@@ -157,33 +157,38 @@ class OpenAIVisionGenerator:
         mime_type: str,
         prompt: str,
         model_config: GPTConfig,
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """OpenAI Vision APIを使用して画像またはPDFを解析する
 
         Args:
-            image_path (str): 解析する画像ファイルまたはPDFファイルのパス
-            system_prompt (str): システムプロンプト
-            user_prompt_template (str): ユーザープロンプトテンプレート
+            base64_image (str): Base64エンコードされた画像データ
+            mime_type (str): 画像のMIMEタイプ
+            prompt (str): ユーザープロンプト
             model_config (GPTConfig): モデル設定
-            **kargs: テンプレートに渡す変数
+            system_prompt (str, optional): システムプロンプト
+            generation_kwargs (dict, optional): 生成用の追加パラメータ
 
         Returns:
             dict[str, Any]: レスポンス辞書
         """
 
-        # PDFファイルの場合
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
-                    },
-                ],
-            },
-        ]
+        # Build messages with optional system prompt
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
+                },
+            ],
+        })
 
         # Use retry_config from constructor if not provided in model_config
         retry_config_to_use = (
@@ -192,11 +197,16 @@ class OpenAIVisionGenerator:
             else self.retry_config
         )
 
+        # Merge generation_kwargs with model config
+        generation_params = model_config.generation_config.model_dump()
+        if generation_kwargs:
+            generation_params.update(generation_kwargs)
+
         return {
             "replies": self._chat_completion(
                 messages=messages,
                 api_key=self.api_key,
                 retry_config=retry_config_to_use,
-                **model_config.generation_config.model_dump(),
+                **generation_params,
             )
         }
