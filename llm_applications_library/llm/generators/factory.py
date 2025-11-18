@@ -387,8 +387,10 @@ class GeneratorFactory:
                 ) -> dict[str, Any]:
                     # Merge preset config with provided generation_kwargs
                     merged_kwargs = {}
-                    if hasattr(self._preset_config, 'generation_config'):
-                        merged_kwargs.update(self._preset_config.generation_config.model_dump())
+                    if hasattr(self._preset_config, "generation_config"):
+                        merged_kwargs.update(
+                            self._preset_config.generation_config.model_dump()
+                        )
                     if generation_kwargs:
                         merged_kwargs.update(generation_kwargs)
 

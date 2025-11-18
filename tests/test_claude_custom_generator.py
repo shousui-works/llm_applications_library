@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from llm_applications_library.llm.generators.schema import ClaudeConfig, RetryConfig
+from llm_applications_library.llm.generators.schema import RetryConfig
 
 # Mock anthropic module if not available
 try:
@@ -299,7 +299,6 @@ class TestClaudeVisionGenerator:
             )
 
             generator = ClaudeVisionGenerator(api_key="test-key")
-            config = ClaudeConfig()
 
             # Create a test image (small base64 encoded image)
             test_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
@@ -307,8 +306,8 @@ class TestClaudeVisionGenerator:
             result = generator.run(
                 base64_image=test_image_b64,
                 mime_type="image/png",
-                prompt="Analyze this image",
-                model_config=config,
+                system_prompt="Analyze this image",
+                generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
 
             assert "replies" in result
@@ -327,9 +326,8 @@ class TestClaudeVisionGenerator:
 
             assert len(messages) == 1
             assert messages[0]["role"] == "user"
-            assert len(messages[0]["content"]) == 2
-            assert messages[0]["content"][0]["type"] == "text"
-            assert messages[0]["content"][1]["type"] == "image"
+            assert len(messages[0]["content"]) == 1
+            assert messages[0]["content"][0]["type"] == "image"
 
     def test_run_vision_with_system_prompt(self):
         """Test vision analysis with system prompt."""
@@ -356,15 +354,13 @@ class TestClaudeVisionGenerator:
             )
 
             generator = ClaudeVisionGenerator(api_key="test-key")
-            config = ClaudeConfig()
             test_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
 
             result = generator.run(
                 base64_image=test_image_b64,
                 mime_type="image/png",
-                prompt="Analyze this image",
-                model_config=config,
                 system_prompt="You are an expert image analyst",
+                generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
 
             # Check response structure
@@ -413,12 +409,11 @@ class TestClaudeVisionGenerator:
                     )
 
                     generator = ClaudeVisionGenerator(api_key="test-key")
-                    config = ClaudeConfig()
 
                     result = generator.run_from_file(
                         image_path=tmp_file.name,
-                        prompt="Analyze this image",
-                        model_config=config,
+                        system_prompt="Analyze this image",
+                        generation_kwargs={"temperature": 0.1, "max_tokens": 100},
                     )
 
                     assert "replies" in result
@@ -440,13 +435,12 @@ class TestClaudeVisionGenerator:
             )
 
             generator = ClaudeVisionGenerator(api_key="test-key")
-            config = ClaudeConfig()
 
             with pytest.raises(FileNotFoundError, match="Image file not found"):
                 generator.run_from_file(
                     image_path="non_existent_file.png",
-                    prompt="Analyze this image",
-                    model_config=config,
+                    system_prompt="Analyze this image",
+                    generation_kwargs={"temperature": 0.1, "max_tokens": 100},
                 )
 
     def test_run_from_file_invalid_type(self):
@@ -465,13 +459,12 @@ class TestClaudeVisionGenerator:
                     )
 
                     generator = ClaudeVisionGenerator(api_key="test-key")
-                    config = ClaudeConfig()
 
                     with pytest.raises(ValueError, match="Unsupported file type"):
                         generator.run_from_file(
                             image_path=tmp_file.name,
-                            prompt="Analyze this image",
-                            model_config=config,
+                            system_prompt="Analyze this image",
+                            generation_kwargs={"temperature": 0.1},
                         )
 
             finally:

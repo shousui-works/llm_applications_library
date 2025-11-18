@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Any
 
-from ..generators.schema import ClaudeConfig, RetryConfig
+from ..generators.schema import RetryConfig
 from ...utilities.claude_retry import claude_retry
 
 logger = logging.getLogger(__name__)

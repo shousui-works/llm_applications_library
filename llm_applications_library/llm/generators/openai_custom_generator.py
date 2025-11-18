@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Any
 import openai
-from .schema import GPTConfig, RetryConfig
+from .schema import RetryConfig
 
 from .retry_util import openai_retry
 
@@ -175,15 +175,17 @@ class OpenAIVisionGenerator:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 
-        messages.append({
-            "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
-                },
-            ],
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
+                    },
+                ],
+            }
+        )
 
         # Use retry_config from constructor
         retry_config_to_use = self.retry_config
