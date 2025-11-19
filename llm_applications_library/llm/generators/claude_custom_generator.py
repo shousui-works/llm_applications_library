@@ -240,11 +240,23 @@ class ClaudeVisionGenerator:
         try:
             return _make_api_call()
         except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Claude Vision API error: {error_msg}")
+
+            # Try to extract more detail from anthropic errors
+            if hasattr(e, 'response') and hasattr(e.response, 'text'):
+                try:
+                    error_detail = e.response.text
+                    logger.error(f"Claude API error details: {error_detail}")
+                    error_msg += f" | Response: {error_detail}"
+                except:
+                    pass
+
             return {
                 "success": False,
                 "content": None,
                 "usage": None,
-                "error": str(e),
+                "error": error_msg,
             }
 
     def run(
@@ -268,6 +280,26 @@ class ClaudeVisionGenerator:
             dict[str, Any]: レスポンス辞書
         """
 
+        # Validate inputs
+        if not base64_image or not base64_image.strip():
+            raise ValueError("base64_image cannot be empty")
+
+        if not mime_type:
+            raise ValueError("mime_type cannot be empty")
+
+        # Validate base64 data
+        try:
+            import base64 as b64_module
+            # Test if it's valid base64
+            b64_module.b64decode(base64_image, validate=True)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 image data: {e}")
+
+        # Ensure mime_type is valid for Claude
+        valid_mime_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+        if mime_type not in valid_mime_types:
+            logger.warning(f"Potentially unsupported mime_type: {mime_type}. Supported: {valid_mime_types}")
+
         # Claude APIの画像メッセージ形式（画像とテキストの両方が必要）
         messages = [
             {
@@ -288,6 +320,10 @@ class ClaudeVisionGenerator:
                 ],
             }
         ]
+
+        # Debug logging
+        logger.debug(f"Claude Vision API request - mime_type: {mime_type}, prompt length: {len(prompt)}, image data length: {len(base64_image)}")
+        logger.debug(f"Messages structure: {len(messages[0]['content'])} content items")
 
         # Use retry_config from constructor
         retry_config_to_use = self.retry_config
