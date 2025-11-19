@@ -183,9 +183,8 @@ class ClaudeVisionGenerator:
         self,
         messages: list[dict],
         system_prompt: str | None = None,
-        temperature: float = 0.1,
+        temperature: float | None = None,
         max_tokens: int = 4096,
-        top_p: float = 1.0,
         top_k: int | None = None,
         stop_sequences: list[str] | None = None,
         retry_config: RetryConfig | None = None,
@@ -205,9 +204,13 @@ class ClaudeVisionGenerator:
                 "model": self.model,
                 "max_tokens": max_tokens,
                 "messages": messages,
-                "temperature": temperature,
-                "top_p": top_p,
             }
+
+            # Set temperature if provided, otherwise use default
+            if temperature is not None:
+                kwargs["temperature"] = temperature
+            else:
+                kwargs["temperature"] = 0.1
 
             if top_k is not None:
                 kwargs["top_k"] = top_k
@@ -217,6 +220,23 @@ class ClaudeVisionGenerator:
 
             if system_prompt:
                 kwargs["system"] = system_prompt
+
+            # Debug: Log request details
+            logger.debug(f"Claude API request kwargs: {kwargs}")
+            # Log message content types safely
+            try:
+                first_message = kwargs["messages"][0]
+                if isinstance(first_message.get("content"), list):
+                    content_types = [
+                        item.get("type", "unknown") for item in first_message["content"]
+                    ]
+                    logger.debug(f"Message content types: {content_types}")
+                else:
+                    logger.debug(
+                        f"Message content is string: {type(first_message.get('content'))}"
+                    )
+            except (KeyError, IndexError, TypeError) as e:
+                logger.debug(f"Could not log message content types: {e}")
 
             response = client.messages.create(**kwargs)
 
@@ -240,23 +260,42 @@ class ClaudeVisionGenerator:
         try:
             return _make_api_call()
         except Exception as e:
+            # Handle all errors with generic error handling
             error_msg = str(e)
             logger.error(f"Claude Vision API error: {error_msg}")
 
-            # Try to extract more detail from anthropic errors
-            if hasattr(e, "response") and hasattr(e.response, "text"):
+            # Check error message content for specific error types
+            error_str = str(e).lower()
+            if "bad request" in error_str or "400" in error_str:
+                error_msg = f"Bad Request (400): {str(e)}"
+                logger.error(f"Claude Vision API Bad Request: {error_msg}")
+
+                # Common 400 error causes for Vision API
+                if "maximum context length" in error_str or "too long" in error_str:
+                    error_msg += " | Likely cause: Prompt too long. Consider reducing prompt length."
+                elif "invalid" in error_str and "image" in error_str:
+                    error_msg += " | Likely cause: Invalid image format or data."
+
+            # Try to extract additional error details if available
+            detailed_error = error_msg
+            if hasattr(e, "response"):
                 try:
-                    error_detail = e.response.text
-                    logger.error(f"Claude API error details: {error_detail}")
-                    error_msg += f" | Response: {error_detail}"
-                except Exception:
-                    pass
+                    response = e.response  # type: ignore
+                    status_code = getattr(response, "status_code", "unknown")
+                    if hasattr(response, "text"):
+                        error_body = response.text
+                        logger.error(f"Response body: {error_body}")
+                        detailed_error += (
+                            f" | Status: {status_code} | Body: {error_body}"
+                        )
+                except Exception as extract_error:
+                    logger.error(f"Error extracting response details: {extract_error}")
 
             return {
                 "success": False,
                 "content": None,
                 "usage": None,
-                "error": error_msg,
+                "error": detailed_error,
             }
 
     def run(
@@ -303,6 +342,23 @@ class ClaudeVisionGenerator:
                 f"Potentially unsupported mime_type: {mime_type}. Supported: {valid_mime_types}"
             )
 
+        # Check prompt length and warn if too long
+        if len(prompt) > 10000:  # Warn for very long prompts
+            logger.warning(
+                f"Very long prompt detected: {len(prompt)} characters. This may cause API errors."
+            )
+
+        # Limit prompt length to prevent API errors
+        MAX_PROMPT_LENGTH = 50000  # Conservative limit
+        if len(prompt) > MAX_PROMPT_LENGTH:
+            truncated_prompt = (
+                prompt[:MAX_PROMPT_LENGTH] + "...[truncated due to length]"
+            )
+            logger.warning(
+                f"Prompt truncated from {len(prompt)} to {len(truncated_prompt)} characters"
+            )
+            prompt = truncated_prompt
+
         # Claude APIの画像メッセージ形式（画像とテキストの両方が必要）
         messages = [
             {
@@ -333,18 +389,23 @@ class ClaudeVisionGenerator:
         # Use retry_config from constructor
         retry_config_to_use = self.retry_config
 
-        # Validate and set default generation parameters
+        # Validate and set generation parameters
         if generation_kwargs:
             validated_config = ClaudeGenerationConfig.model_validate(generation_kwargs)
             generation_params = validated_config.model_dump(exclude_none=True)
         else:
             generation_params = {}
 
-        # Set sensible defaults if not specified
-        if "temperature" not in generation_params:
-            generation_params["temperature"] = 0.1
+        # Adjust max_tokens based on prompt length for very long prompts
         if "max_tokens" not in generation_params:
-            generation_params["max_tokens"] = 4096
+            if len(prompt) > 20000:
+                # For very long prompts, use larger max_tokens but within limits
+                generation_params["max_tokens"] = 8192  # Claude 3.5 Sonnet max
+                logger.debug(
+                    f"Increased max_tokens to {generation_params['max_tokens']} for long prompt"
+                )
+            else:
+                generation_params["max_tokens"] = 4096
 
         response = self._chat_completion(
             messages=messages,

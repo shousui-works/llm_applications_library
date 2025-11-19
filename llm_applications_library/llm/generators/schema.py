@@ -109,7 +109,6 @@ class ClaudeGenerationConfig(BaseModel):
 
     temperature: float | None = None
     max_tokens: int | None = None
-    top_p: float | None = None
     top_k: int | None = None
     stop_sequences: list[str] | None = None
     stream: bool | None = None
