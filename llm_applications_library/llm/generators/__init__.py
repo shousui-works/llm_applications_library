@@ -19,12 +19,12 @@ from .schema import (
 )
 from .factory import (
     GeneratorFactory,
-    create_generator,
     detect_provider_from_model,
     debug_model_detection,
 )
 from .pipeline_factory import (
     create_pipeline,
+    create_vision_pipeline,
     PipelineCreationError,
 )
 
@@ -46,11 +46,11 @@ __all__ = [
     "get_provider_api_key",
     # Factory
     "GeneratorFactory",
-    "create_generator",
     "detect_provider_from_model",
     "debug_model_detection",
     # Pipeline Factory
     "create_pipeline",
+    "create_vision_pipeline",
     "PipelineCreationError",
 ]
 

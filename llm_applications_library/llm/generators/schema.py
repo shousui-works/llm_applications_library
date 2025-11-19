@@ -132,8 +132,8 @@ class ClaudeConfig(BaseModel):
     retry_config: RetryConfig = RetryConfig()
 
 
-class TextGenerationUsage(BaseModel):
-    """Text Generation APIの使用統計情報"""
+class GeneratorUsage(BaseModel):
+    """LLMジェネレータの使用統計情報（Text/Vision共通）"""
 
     input_tokens: int = 0
     output_tokens: int = 0
@@ -145,133 +145,16 @@ class TextGenerationUsage(BaseModel):
     model_config = {"extra": "ignore"}
 
 
-class TextGenerationMeta(BaseModel):
-    """Text Generatorのメタデータ"""
+class GeneratorResponse(BaseModel):
+    """LLMジェネレータ（Text/Vision）の統一レスポンスクラス
 
-    # 通常のusage情報
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    total_tokens: int | None = None
-    prompt_tokens: int | None = None
-    completion_tokens: int | None = None
-
-    # エラー情報
-    error: str | None = None
-    retry_config: dict | None = None
-
-    model_config = {"extra": "ignore"}
-
-
-class TextGeneratorResponse(BaseModel):
-    """Text Generator (RetryClaudeGenerator/RetryOpenAIGenerator) の共通返り値クラス
-
-    OpenAI/Claude両方のText Generatorで統一された返り値形式を提供
+    OpenAI/Claude両方のText/Vision Generatorで統一された返り値形式を提供
     """
 
-    replies: list[str]
-    meta: list[TextGenerationMeta]
-
-    model_config = {"extra": "ignore"}
-
-    @classmethod
-    def create_success(
-        cls,
-        content: str,
-        usage: dict | None = None,
-    ) -> "TextGeneratorResponse":
-        """成功レスポンスを作成"""
-        meta = TextGenerationMeta()
-
-        if usage:
-            # 異なる形式のusage情報を統一
-            meta.input_tokens = usage.get("input_tokens", 0)
-            meta.output_tokens = usage.get("output_tokens", 0)
-            meta.total_tokens = usage.get("total_tokens", 0)
-            # OpenAI形式のフィールドもサポート
-            meta.prompt_tokens = usage.get("prompt_tokens")
-            meta.completion_tokens = usage.get("completion_tokens")
-
-        return cls(replies=[content], meta=[meta])
-
-    @classmethod
-    def create_error(
-        cls,
-        error: str,
-        retry_config: dict | None = None,
-    ) -> "TextGeneratorResponse":
-        """エラーレスポンスを作成"""
-        meta = TextGenerationMeta(error=error, retry_config=retry_config)
-        return cls(replies=[], meta=[meta])
-
-    def is_success(self) -> bool:
-        """成功判定（repliesが空でない）"""
-        return len(self.replies) > 0 and self.replies[0] is not None
-
-    def get_content(self) -> str | None:
-        """最初のコンテンツを取得"""
-        if self.replies and len(self.replies) > 0:
-            return self.replies[0]
-        return None
-
-    def get_error(self) -> str | None:
-        """エラーメッセージを取得"""
-        for meta in self.meta:
-            if meta.error:
-                return meta.error
-        return None
-
-    def get_usage(self) -> TextGenerationUsage | None:
-        """使用統計を取得"""
-        if not self.meta or not self.meta[0]:
-            return None
-
-        meta = self.meta[0]
-        # Claude形式またはOpenAI形式のいずれかが存在する場合
-        if (
-            meta.input_tokens is not None
-            or meta.output_tokens is not None
-            or meta.prompt_tokens is not None
-            or meta.completion_tokens is not None
-            or meta.total_tokens is not None
-        ):
-            return TextGenerationUsage(
-                input_tokens=meta.input_tokens or 0,
-                output_tokens=meta.output_tokens or 0,
-                total_tokens=meta.total_tokens or 0,
-                prompt_tokens=meta.prompt_tokens,
-                completion_tokens=meta.completion_tokens,
-            )
-        return None
-
-
-class VisionAnalysisUsage(BaseModel):
-    """Vision APIの使用統計情報"""
-
-    input_tokens: int = 0
-    output_tokens: int = 0
-    total_tokens: int = 0
-
-    model_config = {"extra": "ignore"}
-
-
-class VisionAnalysisResult(BaseModel):
-    """Vision Generatorの個別分析結果"""
-
-    success: bool
+    status: str
     content: str | None = None
-    usage: VisionAnalysisUsage | None = None
+    usage: GeneratorUsage | None = None
     error: str | None = None
-
-    model_config = {"extra": "ignore"}
-
-
-class VisionGeneratorResponse(BaseModel):
-    """Vision Generatorの共通返り値クラス
-
-    OpenAI/Claude両方のVision Generatorで統一された返り値形式を提供
-    """
-
-    replies: list[VisionAnalysisResult]
 
     model_config = {"extra": "ignore"}
 
@@ -279,70 +162,41 @@ class VisionGeneratorResponse(BaseModel):
     def create_success(
         cls,
         content: str,
-        usage: dict | VisionAnalysisUsage | None = None,
-    ) -> "VisionGeneratorResponse":
+        usage: dict | GeneratorUsage | None = None,
+    ) -> "GeneratorResponse":
         """成功レスポンスを作成"""
-        usage_obj: VisionAnalysisUsage | None = None
+        usage_obj = None
         if usage:
             if isinstance(usage, dict):
-                usage_obj = VisionAnalysisUsage.model_validate(usage)
+                # 異なる形式のusage情報を統一
+                usage_obj = GeneratorUsage(
+                    input_tokens=usage.get("input_tokens", 0),
+                    output_tokens=usage.get("output_tokens", 0),
+                    total_tokens=usage.get("total_tokens", 0),
+                    prompt_tokens=usage.get("prompt_tokens"),
+                    completion_tokens=usage.get("completion_tokens"),
+                )
             else:
                 usage_obj = usage
 
-        result = VisionAnalysisResult(
-            success=True, content=content, usage=usage_obj, error=None
-        )
-        return cls(replies=[result])
+        return cls(status="success", content=content, usage=usage_obj, error=None)
 
     @classmethod
     def create_error(
         cls,
         error: str,
-        usage: dict | VisionAnalysisUsage | None = None,
-    ) -> "VisionGeneratorResponse":
+        usage: dict | GeneratorUsage | None = None,
+    ) -> "GeneratorResponse":
         """エラーレスポンスを作成"""
-        usage_obj: VisionAnalysisUsage | None = None
+        usage_obj = None
         if usage:
             if isinstance(usage, dict):
-                usage_obj = VisionAnalysisUsage.model_validate(usage)
+                usage_obj = GeneratorUsage.model_validate(usage)
             else:
                 usage_obj = usage
 
-        result = VisionAnalysisResult(
-            success=False, content=None, usage=usage_obj, error=error
-        )
-        return cls(replies=[result])
+        return cls(status="error", content=None, usage=usage_obj, error=error)
 
     def is_success(self) -> bool:
-        """全ての結果が成功かチェック"""
-        return all(reply.success for reply in self.replies)
-
-    def get_content(self) -> str | None:
-        """最初の成功した結果のcontentを取得"""
-        for reply in self.replies:
-            if reply.success and reply.content:
-                return reply.content
-        return None
-
-    def get_error(self) -> str | None:
-        """最初のエラーを取得"""
-        for reply in self.replies:
-            if not reply.success and reply.error:
-                return reply.error
-        return None
-
-    def get_total_usage(self) -> VisionAnalysisUsage:
-        """全ての使用統計を合計"""
-        total_input = 0
-        total_output = 0
-
-        for reply in self.replies:
-            if reply.usage:
-                total_input += reply.usage.input_tokens
-                total_output += reply.usage.output_tokens
-
-        return VisionAnalysisUsage(
-            input_tokens=total_input,
-            output_tokens=total_output,
-            total_tokens=total_input + total_output,
-        )
+        """成功判定"""
+        return self.status == "success"

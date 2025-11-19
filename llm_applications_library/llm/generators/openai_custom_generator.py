@@ -7,8 +7,7 @@ import openai
 from .schema import (
     RetryConfig,
     OpenAIGenerationConfig,
-    VisionGeneratorResponse,
-    TextGeneratorResponse,
+    GeneratorResponse,
 )
 
 from .retry_util import openai_retry
@@ -49,7 +48,7 @@ class RetryOpenAIGenerator:
         prompt: str,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> TextGeneratorResponse:
+    ) -> GeneratorResponse:
         """
         retry機能付きでテキスト生成を実行
 
@@ -91,7 +90,7 @@ class RetryOpenAIGenerator:
                 f"initial_wait={self.retry_config.initial_wait}"
             )
             content, usage = _run_with_retry()
-            return TextGeneratorResponse.create_success(content=content, usage=usage)
+            return GeneratorResponse.create_success(content=content, usage=usage)
         except Exception as e:
             # Validation errors should be raised immediately (not retried)
             if "validation error" in str(e) or "Extra inputs are not permitted" in str(
@@ -102,9 +101,7 @@ class RetryOpenAIGenerator:
             else:
                 logger.error(f"OpenAI generation failed after retries: {e}")
                 # エラー時のフォールバック応答
-                return TextGeneratorResponse.create_error(
-                    error=str(e), retry_config=self.retry_config.model_dump()
-                )
+                return GeneratorResponse.create_error(error=str(e))
 
 
 class OpenAIVisionGenerator:
@@ -171,7 +168,7 @@ class OpenAIVisionGenerator:
         prompt: str = "Please analyze this image in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> VisionGeneratorResponse:
+    ) -> GeneratorResponse:
         """OpenAI Vision APIを使用して画像またはPDFを解析する
 
         Args:
@@ -231,11 +228,11 @@ class OpenAIVisionGenerator:
 
         # 新しい共通クラスで返り値を統一
         if response["success"]:
-            return VisionGeneratorResponse.create_success(
+            return GeneratorResponse.create_success(
                 content=response["content"], usage=response["usage"]
             )
         else:
-            return VisionGeneratorResponse.create_error(
+            return GeneratorResponse.create_error(
                 error=response["error"], usage=response["usage"]
             )
 
@@ -245,7 +242,7 @@ class OpenAIVisionGenerator:
         prompt: str = "Please analyze this image in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> VisionGeneratorResponse:
+    ) -> GeneratorResponse:
         """ファイルパスから画像を読み込んでOpenAI Vision APIで解析
 
         Args:

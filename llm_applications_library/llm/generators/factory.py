@@ -9,8 +9,7 @@ from .schema import (
     GPTConfig,
     ClaudeConfig,
     ProviderType,
-    TextGeneratorResponse,
-    VisionGeneratorResponse,
+    GeneratorResponse,
     get_provider_api_key,
 )
 from .openai_custom_generator import (
@@ -38,7 +37,7 @@ class TextGenerator(Protocol):
         prompt: str,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> TextGeneratorResponse:
+    ) -> GeneratorResponse:
         """Generate text response."""
         ...
 
@@ -53,7 +52,7 @@ class VisionGenerator(Protocol):
         prompt: str = "この画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> VisionGeneratorResponse:
+    ) -> GeneratorResponse:
         """Generate vision analysis response."""
         ...
 
@@ -316,7 +315,7 @@ class GeneratorFactory:
                     prompt: str,
                     system_prompt: str | None = None,
                     generation_kwargs: dict[str, Any] | None = None,
-                ) -> TextGeneratorResponse:
+                ) -> GeneratorResponse:
                     # Merge preset kwargs with provided kwargs
                     merged_kwargs = self._preset_kwargs.copy()
                     if generation_kwargs:
@@ -402,7 +401,7 @@ class GeneratorFactory:
                     prompt: str = "この画像を詳細に分析してください。",
                     system_prompt: str | None = None,
                     generation_kwargs: dict[str, Any] | None = None,
-                ) -> VisionGeneratorResponse:
+                ) -> GeneratorResponse:
                     # Merge preset config with provided generation_kwargs
                     merged_kwargs = {}
                     if hasattr(self._preset_config, "generation_config"):
@@ -456,38 +455,3 @@ class GeneratorFactory:
         """
         provider = detect_provider_from_model(model)
         return get_default_config_for_provider(provider, retry_config)
-
-
-# Convenience functions for direct usage
-def create_generator(
-    model: str,
-    generator_type: str = "text",
-    retry_config: RetryConfig | None = None,
-) -> Union[TextGenerator, VisionGenerator]:
-    """
-    Convenience function to create a generator.
-
-    Args:
-        model: Model name
-        generator_type: Type of generator ("text" or "vision")
-        retry_config: Retry configuration (optional)
-
-    Returns:
-        Appropriate generator instance (API keys auto-detected from environment)
-
-    Examples:
-        # Basic usage (API keys from environment variables)
-        gen = create_generator("gpt-4o", "text")
-
-        # With retry configuration
-        retry_config = RetryConfig(max_attempts=5)
-        gen = create_generator("claude-3-haiku", "text", retry_config)
-    """
-    if generator_type == "text":
-        return GeneratorFactory.create_text_generator(model, retry_config=retry_config)
-    elif generator_type == "vision":
-        return GeneratorFactory.create_vision_generator(
-            model, retry_config=retry_config
-        )
-    else:
-        raise ValueError(f"Unknown generator type: {generator_type}")

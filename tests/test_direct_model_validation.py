@@ -143,13 +143,13 @@ class TestIntegrationWithGenerators:
 
             # Valid params should work
             result = generator.run("test", generation_kwargs={"temperature": 0.7})
-            assert hasattr(result, "replies")
-            assert len(result.replies) > 0
+            assert result.is_success()
+            assert result.content is not None
 
             # Invalid params should be ignored
             result = generator.run("test", generation_kwargs={"invalid_param": "value"})
-            assert hasattr(result, "replies")
-            assert len(result.replies) > 0
+            assert result.is_success()
+            assert result.content is not None
 
     def test_claude_generator_direct_validation(self):
         """Test direct validation in Claude generator context."""

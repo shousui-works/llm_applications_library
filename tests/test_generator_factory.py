@@ -7,7 +7,6 @@ from llm_applications_library.llm.generators.factory import (
     GeneratorFactory,
     detect_provider_from_model,
     get_default_config_for_provider,
-    create_generator,
     ProviderType,
     CLAUDE_AVAILABLE,
 )
@@ -338,49 +337,8 @@ class TestClaudeUnavailableScenario:
             GeneratorFactory.create_vision_generator("claude-3-haiku-20240307")
 
 
-class TestConvenienceFunctions:
-    """Test convenience functions."""
-
-    @patch(
-        "llm_applications_library.llm.generators.factory.GeneratorFactory.create_text_generator"
-    )
-    def test_create_text_generator_convenience(self, mock_create_text):
-        """Test convenience function for text generator."""
-        mock_generator = MagicMock()
-        mock_create_text.return_value = mock_generator
-
-        retry_config = RetryConfig()
-        result = create_generator("gpt-4o", "text", retry_config)
-
-        mock_create_text.assert_called_once_with("gpt-4o", retry_config=retry_config)
-        assert result == mock_generator
-
-    @patch(
-        "llm_applications_library.llm.generators.factory.GeneratorFactory.create_vision_generator"
-    )
-    def test_create_vision_generator_convenience(self, mock_create_vision):
-        """Test convenience function for vision generator."""
-        mock_generator = MagicMock()
-        mock_create_vision.return_value = mock_generator
-
-        result = create_generator("gpt-4o", "vision")
-
-        mock_create_vision.assert_called_once_with("gpt-4o", retry_config=None)
-        assert result == mock_generator
-
-    def test_create_generator_invalid_type_raises_error(self):
-        """Test that invalid generator type raises ValueError."""
-        with pytest.raises(ValueError, match="Unknown generator type"):
-            create_generator("gpt-4o", "invalid_type")
-
-    def test_create_generator_default_parameters(self):
-        """Test create_generator with default parameters."""
-        with patch(
-            "llm_applications_library.llm.generators.factory.GeneratorFactory.create_text_generator"
-        ) as mock_create:
-            mock_create.return_value = MagicMock()
-            create_generator("gpt-4o")
-            mock_create.assert_called_once_with("gpt-4o", retry_config=None)
+class TestFactoryAdvancedFeatures:
+    """Test advanced factory features."""
 
     def test_factory_create_text_generator_with_generation_kwargs(self):
         """Test that create_text_generator can accept generation_kwargs."""
