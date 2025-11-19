@@ -118,10 +118,15 @@ class TestRetryClaudeGenerator:
             generator = RetryClaudeGenerator(api_key="test-key")
             result = generator.run("Test prompt")
 
-            assert result["replies"] == ["Generated text"]
-            assert result["meta"][0]["input_tokens"] == 10
-            assert result["meta"][0]["output_tokens"] == 20
-            assert result["meta"][0]["total_tokens"] == 30
+            # Check using new TextGeneratorResponse interface
+            assert result.is_success() is True
+            assert result.get_content() == "Generated text"
+
+            usage = result.get_usage()
+            assert usage is not None
+            assert usage.input_tokens == 10
+            assert usage.output_tokens == 20
+            assert usage.total_tokens == 30
 
     def test_run_with_system_prompt(self):
         """Test text generation with system prompt."""
@@ -208,9 +213,10 @@ class TestRetryClaudeGenerator:
             generator = RetryClaudeGenerator(api_key="test-key")
             result = generator.run("Test prompt")
 
-            assert result["replies"] == []
-            assert "error" in result["meta"][0]
-            assert "API Error" in result["meta"][0]["error"]
+            # Check error response using new interface
+            assert result.is_success() is False
+            assert result.get_content() is None
+            assert result.get_error() == "API Error"
 
     def test_retry_config(self):
         """Test custom retry configuration."""
@@ -310,14 +316,20 @@ class TestClaudeVisionGenerator:
                 generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
 
-            assert "replies" in result
-            assert len(result["replies"]) == 1
+            # Check the response structure - new VisionGeneratorResponse
+            assert hasattr(result, "replies")
+            assert len(result.replies) == 1
 
-            # Check the response structure - it should contain the _chat_completion response
-            response = result["replies"][0]
-            assert "success" in response
-            assert "content" in response
-            assert "usage" in response
+            # Check the actual response using the new interface
+            assert result.is_success() is True
+            assert result.get_content() == "Image analysis result"
+            assert result.get_error() is None
+
+            # Check individual reply
+            reply = result.replies[0]
+            assert reply.success is True
+            assert reply.content == "Image analysis result"
+            assert reply.usage is not None
 
             # Verify the correct message format was sent
             mock_client.messages.create.assert_called_once()
@@ -364,10 +376,10 @@ class TestClaudeVisionGenerator:
                 generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
 
-            # Check response structure
-            assert "replies" in result
-            response = result["replies"][0]
-            assert "success" in response
+            # Check response structure - new VisionGeneratorResponse
+            assert hasattr(result, "replies")
+            assert len(result.replies) == 1
+            assert result.is_success() is True
 
             # Verify system prompt was passed
             mock_client.messages.create.assert_called_once()
@@ -417,9 +429,10 @@ class TestClaudeVisionGenerator:
                         generation_kwargs={"temperature": 0.1, "max_tokens": 100},
                     )
 
-                    assert "replies" in result
-                    response = result["replies"][0]
-                    assert "success" in response
+                    # Check response structure - new VisionGeneratorResponse
+                    assert hasattr(result, "replies")
+                    assert len(result.replies) == 1
+                    assert result.is_success() is True
                     mock_client.messages.create.assert_called_once()
 
             finally:

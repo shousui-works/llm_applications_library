@@ -81,8 +81,11 @@ class TestOpenAIVisionGenerator:
                 generation_kwargs={"temperature": 0.1, "max_tokens": 1000},
             )
 
-            assert "replies" in result
-            assert result["replies"] == [expected_result]
+            # Check response structure - new VisionGeneratorResponse
+            assert hasattr(result, "replies")
+            assert len(result.replies) == 1
+            assert result.is_success() is True
+            assert result.get_content() == "Image analysis result"
 
             # _chat_completionが呼ばれたことを確認
             mock_chat.assert_called_once()

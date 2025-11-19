@@ -5,7 +5,12 @@ import logging
 import os
 from typing import Any
 
-from ..generators.schema import RetryConfig, ClaudeGenerationConfig
+from ..generators.schema import (
+    RetryConfig,
+    ClaudeGenerationConfig,
+    VisionGeneratorResponse,
+    TextGeneratorResponse,
+)
 from ...utilities.claude_retry import claude_retry
 
 logger = logging.getLogger(__name__)
@@ -60,7 +65,7 @@ class RetryClaudeGenerator:
         prompt: str,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> TextGeneratorResponse:
         """
         retry機能付きでテキスト生成を実行
 
@@ -70,7 +75,7 @@ class RetryClaudeGenerator:
             generation_kwargs: 生成用の追加パラメータ
 
         Returns:
-            生成されたレスポンスのリストとメタデータのリストを含む辞書
+            TextGeneratorResponse: 統一されたテキスト生成レスポンス
         """
 
         @claude_retry(
@@ -113,10 +118,7 @@ class RetryClaudeGenerator:
                 ),
             }
 
-            return {
-                "replies": [content],
-                "meta": [usage],
-            }
+            return content, usage
 
         try:
             logger.debug(
@@ -124,7 +126,8 @@ class RetryClaudeGenerator:
                 f"max_attempts={self.retry_config.max_attempts}, "
                 f"initial_wait={self.retry_config.initial_wait}"
             )
-            return _run_with_retry()
+            content, usage = _run_with_retry()
+            return TextGeneratorResponse.create_success(content=content, usage=usage)
         except Exception as e:
             # Validation errors should be raised immediately (not retried)
             if "validation error" in str(e) or "Extra inputs are not permitted" in str(
@@ -135,15 +138,9 @@ class RetryClaudeGenerator:
             else:
                 logger.error(f"Claude generation failed after retries: {e}")
                 # エラー時のフォールバック応答
-                return {
-                    "replies": [],
-                    "meta": [
-                        {
-                            "error": str(e),
-                            "retry_config": self.retry_config.model_dump(),
-                        }
-                    ],
-                }
+                return TextGeneratorResponse.create_error(
+                    error=str(e), retry_config=self.retry_config.model_dump()
+                )
 
 
 class ClaudeVisionGenerator:
@@ -305,7 +302,7 @@ class ClaudeVisionGenerator:
         prompt: str = "この画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> VisionGeneratorResponse:
         """Claude Vision APIを使用して画像を解析する
 
         Args:
@@ -316,7 +313,7 @@ class ClaudeVisionGenerator:
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            dict[str, Any]: レスポンス辞書
+            VisionGeneratorResponse: 統一されたVision分析レスポンス
         """
 
         # Validate inputs
@@ -414,7 +411,15 @@ class ClaudeVisionGenerator:
             **generation_params,
         )
 
-        return {"replies": [response]}
+        # 新しい共通クラスで返り値を統一
+        if response["success"]:
+            return VisionGeneratorResponse.create_success(
+                content=response["content"], usage=response["usage"]
+            )
+        else:
+            return VisionGeneratorResponse.create_error(
+                error=response["error"], usage=response["usage"]
+            )
 
     def run_from_file(
         self,
@@ -422,7 +427,7 @@ class ClaudeVisionGenerator:
         prompt: str = "この画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> VisionGeneratorResponse:
         """ファイルパスから画像を読み込んでClaude Vision APIで解析
 
         Args:
@@ -432,7 +437,7 @@ class ClaudeVisionGenerator:
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            dict[str, Any]: レスポンス辞書
+            VisionGeneratorResponse: 統一されたVision分析レスポンス
         """
         import mimetypes
 
