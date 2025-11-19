@@ -120,9 +120,9 @@ class TestRetryClaudeGenerator:
 
             # Check using new TextGeneratorResponse interface
             assert result.is_success() is True
-            assert result.get_content() == "Generated text"
+            assert result.content == "Generated text"
 
-            usage = result.get_usage()
+            usage = result.usage
             assert usage is not None
             assert usage.input_tokens == 10
             assert usage.output_tokens == 20
@@ -215,8 +215,8 @@ class TestRetryClaudeGenerator:
 
             # Check error response using new interface
             assert result.is_success() is False
-            assert result.get_content() is None
-            assert result.get_error() == "API Error"
+            assert result.content is None
+            assert result.error == "API Error"
 
     def test_retry_config(self):
         """Test custom retry configuration."""
@@ -316,20 +316,11 @@ class TestClaudeVisionGenerator:
                 generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
 
-            # Check the response structure - new VisionGeneratorResponse
-            assert hasattr(result, "replies")
-            assert len(result.replies) == 1
-
-            # Check the actual response using the new interface
+            # Check the response structure - new unified GeneratorResponse
             assert result.is_success() is True
-            assert result.get_content() == "Image analysis result"
-            assert result.get_error() is None
-
-            # Check individual reply
-            reply = result.replies[0]
-            assert reply.success is True
-            assert reply.content == "Image analysis result"
-            assert reply.usage is not None
+            assert result.content == "Image analysis result"
+            assert result.error is None
+            assert result.usage is not None
 
             # Verify the correct message format was sent
             mock_client.messages.create.assert_called_once()
@@ -376,9 +367,7 @@ class TestClaudeVisionGenerator:
                 generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
 
-            # Check response structure - new VisionGeneratorResponse
-            assert hasattr(result, "replies")
-            assert len(result.replies) == 1
+            # Check response structure - new unified GeneratorResponse
             assert result.is_success() is True
 
             # Verify system prompt was passed
@@ -429,9 +418,7 @@ class TestClaudeVisionGenerator:
                         generation_kwargs={"temperature": 0.1, "max_tokens": 100},
                     )
 
-                    # Check response structure - new VisionGeneratorResponse
-                    assert hasattr(result, "replies")
-                    assert len(result.replies) == 1
+                    # Check response structure - new unified GeneratorResponse
                     assert result.is_success() is True
                     mock_client.messages.create.assert_called_once()
 
