@@ -244,12 +244,12 @@ class ClaudeVisionGenerator:
             logger.error(f"Claude Vision API error: {error_msg}")
 
             # Try to extract more detail from anthropic errors
-            if hasattr(e, 'response') and hasattr(e.response, 'text'):
+            if hasattr(e, "response") and hasattr(e.response, "text"):
                 try:
                     error_detail = e.response.text
                     logger.error(f"Claude API error details: {error_detail}")
                     error_msg += f" | Response: {error_detail}"
-                except:
+                except Exception:
                     pass
 
             return {
@@ -290,6 +290,7 @@ class ClaudeVisionGenerator:
         # Validate base64 data
         try:
             import base64 as b64_module
+
             # Test if it's valid base64
             b64_module.b64decode(base64_image, validate=True)
         except Exception as e:
@@ -298,7 +299,9 @@ class ClaudeVisionGenerator:
         # Ensure mime_type is valid for Claude
         valid_mime_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
         if mime_type not in valid_mime_types:
-            logger.warning(f"Potentially unsupported mime_type: {mime_type}. Supported: {valid_mime_types}")
+            logger.warning(
+                f"Potentially unsupported mime_type: {mime_type}. Supported: {valid_mime_types}"
+            )
 
         # Claude APIの画像メッセージ形式（画像とテキストの両方が必要）
         messages = [
@@ -322,7 +325,9 @@ class ClaudeVisionGenerator:
         ]
 
         # Debug logging
-        logger.debug(f"Claude Vision API request - mime_type: {mime_type}, prompt length: {len(prompt)}, image data length: {len(base64_image)}")
+        logger.debug(
+            f"Claude Vision API request - mime_type: {mime_type}, prompt length: {len(prompt)}, image data length: {len(base64_image)}"
+        )
         logger.debug(f"Messages structure: {len(messages[0]['content'])} content items")
 
         # Use retry_config from constructor

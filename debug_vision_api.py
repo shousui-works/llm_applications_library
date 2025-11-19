@@ -7,19 +7,24 @@ import logging
 from pathlib import Path
 
 # Load .env file
-env_path = Path(__file__).parent / '.env'
+env_path = Path(__file__).parent / ".env"
 if env_path.exists():
-    with open(env_path, 'r') as f:
+    with open(env_path, "r") as f:
         for line in f:
             line = line.strip()
-            if line and not line.startswith('#') and '=' in line:
-                key, value = line.split('=', 1)
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
                 os.environ[key.strip()] = value.strip()
 
-from llm_applications_library.llm.generators.claude_custom_generator import ClaudeVisionGenerator
+from llm_applications_library.llm.generators.claude_custom_generator import (
+    ClaudeVisionGenerator,
+)
 
 # Enable debug logging
-logging.basicConfig(level=logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, format="%(name)s - %(levelname)s - %(message)s"
+)
+
 
 def create_test_image():
     """Create a minimal valid PNG image in base64"""
@@ -27,7 +32,8 @@ def create_test_image():
     png_data = base64.b64decode(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
     )
-    return base64.b64encode(png_data).decode('utf-8')
+    return base64.b64encode(png_data).decode("utf-8")
+
 
 def test_vision_api():
     """Test Claude Vision API with debugging"""
@@ -45,8 +51,7 @@ def test_vision_api():
     try:
         # Create generator
         generator = ClaudeVisionGenerator(
-            model="claude-3-haiku-20240307",
-            api_key=api_key
+            model="claude-3-haiku-20240307", api_key=api_key
         )
         print("✅ Generator created successfully")
 
@@ -67,8 +72,9 @@ def test_vision_api():
         print(f"❌ Error: {e}")
 
         # Additional error details
-        if hasattr(e, '__dict__'):
+        if hasattr(e, "__dict__"):
             print(f"Error attributes: {e.__dict__}")
+
 
 if __name__ == "__main__":
     test_vision_api()
