@@ -60,6 +60,11 @@ def test_vision_api():
         print(f"✅ Test image created (length: {len(test_image)})")
 
         print("\n📤 Testing API call...")
+        print(f"📋 Request details:")
+        print(f"  - Image data length: {len(test_image)}")
+        print(f"  - MIME type: image/png")
+        print(f"  - Prompt: この画像を分析してください。")
+
         result = generator.run(
             base64_image=test_image,
             mime_type="image/png",
@@ -67,6 +72,14 @@ def test_vision_api():
         )
 
         print("📝 Result:", result)
+
+        # Check if error occurred
+        if isinstance(result, dict) and result.get("replies"):
+            reply = result["replies"][0]
+            if isinstance(reply, dict) and not reply.get("success", True):
+                print(f"❌ API call failed: {reply.get('error', 'Unknown error')}")
+            else:
+                print("✅ API call succeeded!")
 
     except Exception as e:
         print(f"❌ Error: {e}")
