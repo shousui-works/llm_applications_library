@@ -9,6 +9,7 @@ from .schema import (
     GPTConfig,
     ClaudeConfig,
     ProviderType,
+    TextGeneratorResponse,
     get_provider_api_key,
 )
 from .openai_custom_generator import (
@@ -36,7 +37,7 @@ class TextGenerator(Protocol):
         prompt: str,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> TextGeneratorResponse:
         """Generate text response."""
         ...
 
@@ -303,7 +304,7 @@ class GeneratorFactory:
                     prompt: str,
                     system_prompt: str | None = None,
                     generation_kwargs: dict[str, Any] | None = None,
-                ) -> dict[str, Any]:
+                ) -> TextGeneratorResponse:
                     # Merge preset kwargs with provided kwargs
                     merged_kwargs = self._preset_kwargs.copy()
                     if generation_kwargs:
