@@ -82,7 +82,7 @@ class TestOpenAIVisionGenerator:
             )
 
             assert "replies" in result
-            assert result["replies"] == expected_result
+            assert result["replies"] == [expected_result]
 
             # _chat_completionが呼ばれたことを確認
             mock_chat.assert_called_once()
@@ -96,12 +96,14 @@ class TestOpenAIVisionGenerator:
             assert messages[0]["role"] == "system"
             assert messages[0]["content"] == "Analyze this image"
 
-            # User message with image
+            # User message with image and text
             assert messages[1]["role"] == "user"
-            assert len(messages[1]["content"]) == 1
+            assert len(messages[1]["content"]) == 2
 
             # 画像部分の確認
             assert messages[1]["content"][0]["type"] == "image_url"
+            # テキスト部分の確認
+            assert messages[1]["content"][1]["type"] == "text"
             assert (
                 "data:image/png;base64,test_base64_data"
                 in (messages[1]["content"][0]["image_url"]["url"])

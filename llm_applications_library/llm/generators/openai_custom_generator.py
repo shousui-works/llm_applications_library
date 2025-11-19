@@ -169,6 +169,7 @@ class OpenAIVisionGenerator:
         self,
         base64_image: str,
         mime_type: str,
+        prompt: str = "Please analyze this image in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -177,7 +178,8 @@ class OpenAIVisionGenerator:
         Args:
             base64_image (str): Base64エンコードされた画像データ
             mime_type (str): 画像のMIMEタイプ
-            system_prompt (str, optional): 分析指示プロンプト
+            prompt (str): 画像に対する分析指示（デフォルト: "Please analyze this image in detail."）
+            system_prompt (str, optional): システムプロンプト
             generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
@@ -196,6 +198,10 @@ class OpenAIVisionGenerator:
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt,
                     },
                 ],
             }
@@ -217,11 +223,53 @@ class OpenAIVisionGenerator:
         if "max_tokens" not in generation_params:
             generation_params["max_tokens"] = 4096
 
-        return {
-            "replies": self._chat_completion(
-                messages=messages,
-                api_key=self.api_key,
-                retry_config=retry_config_to_use,
-                **generation_params,
-            )
-        }
+        response = self._chat_completion(
+            messages=messages,
+            api_key=self.api_key,
+            retry_config=retry_config_to_use,
+            **generation_params,
+        )
+
+        return {"replies": [response]}
+
+    def run_from_file(
+        self,
+        image_path: str,
+        prompt: str = "Please analyze this image in detail.",
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """ファイルパスから画像を読み込んでOpenAI Vision APIで解析
+
+        Args:
+            image_path: 画像ファイルのパス
+            prompt: 画像に対する分析指示（デフォルト: "Please analyze this image in detail."）
+            system_prompt: システムプロンプト（オプション）
+            generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
+
+        Returns:
+            dict[str, Any]: レスポンス辞書
+        """
+        import base64
+        import mimetypes
+
+        # ファイルの存在確認
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Image file not found: {image_path}")
+
+        # MIMEタイプの推定
+        mime_type, _ = mimetypes.guess_type(image_path)
+        if not mime_type or not mime_type.startswith("image/"):
+            raise ValueError(f"Unsupported file type: {mime_type}")
+
+        # 画像ファイルをBase64エンコード
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+        return self.run(
+            base64_image=base64_image,
+            mime_type=mime_type,
+            prompt=prompt,
+            system_prompt=system_prompt,
+            generation_kwargs=generation_kwargs,
+        )

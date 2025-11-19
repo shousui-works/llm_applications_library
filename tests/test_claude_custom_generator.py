@@ -326,8 +326,9 @@ class TestClaudeVisionGenerator:
 
             assert len(messages) == 1
             assert messages[0]["role"] == "user"
-            assert len(messages[0]["content"]) == 1
+            assert len(messages[0]["content"]) == 2
             assert messages[0]["content"][0]["type"] == "image"
+            assert messages[0]["content"][1]["type"] == "text"
 
     def test_run_vision_with_system_prompt(self):
         """Test vision analysis with system prompt."""
