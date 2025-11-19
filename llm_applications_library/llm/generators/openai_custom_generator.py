@@ -4,7 +4,12 @@ import logging
 import os
 from typing import Any
 import openai
-from .schema import RetryConfig, OpenAIGenerationConfig
+from .schema import (
+    RetryConfig,
+    OpenAIGenerationConfig,
+    VisionGeneratorResponse,
+    TextGeneratorResponse,
+)
 
 from .retry_util import openai_retry
 
@@ -44,7 +49,7 @@ class RetryOpenAIGenerator:
         prompt: str,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> TextGeneratorResponse:
         """
         retry機能付きでテキスト生成を実行
 
@@ -54,7 +59,7 @@ class RetryOpenAIGenerator:
             generation_kwargs: 生成用の追加パラメータ
 
         Returns:
-            生成されたレスポンスのリストとメタデータのリストを含む辞書
+            TextGeneratorResponse: 統一されたテキスト生成レスポンス
         """
 
         @openai_retry(self.retry_config)
@@ -75,10 +80,9 @@ class RetryOpenAIGenerator:
                 kwargs.update(validated_config.model_dump(exclude_none=True))
 
             response = client.chat.completions.create(**kwargs)
-            return {
-                "replies": [response.choices[0].message.content],
-                "meta": [response.usage.model_dump() if response.usage else {}],
-            }
+            content = response.choices[0].message.content
+            usage = response.usage.model_dump() if response.usage else {}
+            return content, usage
 
         try:
             logger.debug(
@@ -86,7 +90,8 @@ class RetryOpenAIGenerator:
                 f"max_attempts={self.retry_config.max_attempts}, "
                 f"initial_wait={self.retry_config.initial_wait}"
             )
-            return _run_with_retry()
+            content, usage = _run_with_retry()
+            return TextGeneratorResponse.create_success(content=content, usage=usage)
         except Exception as e:
             # Validation errors should be raised immediately (not retried)
             if "validation error" in str(e) or "Extra inputs are not permitted" in str(
@@ -97,15 +102,9 @@ class RetryOpenAIGenerator:
             else:
                 logger.error(f"OpenAI generation failed after retries: {e}")
                 # エラー時のフォールバック応答
-                return {
-                    "replies": [],
-                    "meta": [
-                        {
-                            "error": str(e),
-                            "retry_config": self.retry_config.model_dump(),
-                        }
-                    ],
-                }
+                return TextGeneratorResponse.create_error(
+                    error=str(e), retry_config=self.retry_config.model_dump()
+                )
 
 
 class OpenAIVisionGenerator:
@@ -172,7 +171,7 @@ class OpenAIVisionGenerator:
         prompt: str = "Please analyze this image in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> VisionGeneratorResponse:
         """OpenAI Vision APIを使用して画像またはPDFを解析する
 
         Args:
@@ -183,7 +182,7 @@ class OpenAIVisionGenerator:
             generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            dict[str, Any]: レスポンス辞書
+            VisionGeneratorResponse: 統一されたVision分析レスポンス
         """
 
         # Build messages with optional system prompt
@@ -230,7 +229,15 @@ class OpenAIVisionGenerator:
             **generation_params,
         )
 
-        return {"replies": [response]}
+        # 新しい共通クラスで返り値を統一
+        if response["success"]:
+            return VisionGeneratorResponse.create_success(
+                content=response["content"], usage=response["usage"]
+            )
+        else:
+            return VisionGeneratorResponse.create_error(
+                error=response["error"], usage=response["usage"]
+            )
 
     def run_from_file(
         self,
@@ -238,7 +245,7 @@ class OpenAIVisionGenerator:
         prompt: str = "Please analyze this image in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> VisionGeneratorResponse:
         """ファイルパスから画像を読み込んでOpenAI Vision APIで解析
 
         Args:
@@ -248,7 +255,7 @@ class OpenAIVisionGenerator:
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            dict[str, Any]: レスポンス辞書
+            VisionGeneratorResponse: 統一されたVision分析レスポンス
         """
         import base64
         import mimetypes
