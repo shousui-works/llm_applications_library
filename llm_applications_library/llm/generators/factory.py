@@ -9,6 +9,8 @@ from .schema import (
     GPTConfig,
     ClaudeConfig,
     ProviderType,
+    TextGeneratorResponse,
+    VisionGeneratorResponse,
     get_provider_api_key,
 )
 from .openai_custom_generator import (
@@ -36,13 +38,24 @@ class TextGenerator(Protocol):
         prompt: str,
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> TextGeneratorResponse:
         """Generate text response."""
         ...
 
 
-# Type alias for vision generators
-VisionGenerator = Any
+class VisionGenerator(Protocol):
+    """Protocol for vision generators."""
+
+    def run(
+        self,
+        base64_image: str,
+        mime_type: str,
+        prompt: str = "この画像を詳細に分析してください。",
+        system_prompt: str | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+    ) -> VisionGeneratorResponse:
+        """Generate vision analysis response."""
+        ...
 
 
 def detect_provider_from_model(model: str) -> ProviderType:
@@ -303,7 +316,7 @@ class GeneratorFactory:
                     prompt: str,
                     system_prompt: str | None = None,
                     generation_kwargs: dict[str, Any] | None = None,
-                ) -> dict[str, Any]:
+                ) -> TextGeneratorResponse:
                     # Merge preset kwargs with provided kwargs
                     merged_kwargs = self._preset_kwargs.copy()
                     if generation_kwargs:
@@ -386,9 +399,10 @@ class GeneratorFactory:
                     self,
                     base64_image: str,
                     mime_type: str,
+                    prompt: str = "この画像を詳細に分析してください。",
                     system_prompt: str | None = None,
                     generation_kwargs: dict[str, Any] | None = None,
-                ) -> dict[str, Any]:
+                ) -> VisionGeneratorResponse:
                     # Merge preset config with provided generation_kwargs
                     merged_kwargs = {}
                     if hasattr(self._preset_config, "generation_config"):
@@ -399,7 +413,11 @@ class GeneratorFactory:
                         merged_kwargs.update(generation_kwargs)
 
                     return self._generator.run(
-                        base64_image, mime_type, system_prompt, merged_kwargs
+                        base64_image=base64_image,
+                        mime_type=mime_type,
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        generation_kwargs=merged_kwargs,
                     )
 
                 def __getattr__(self, name):
