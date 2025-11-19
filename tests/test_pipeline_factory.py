@@ -224,7 +224,10 @@ class TestCreateVisionPipeline:
         assert kwargs["generation_kwargs"] == {"temperature": 0.7}
 
     @patch("llm_applications_library.llm.generators.pipeline_factory.Pipeline")
-    def test_create_vision_pipeline_with_retry_config(self, mock_pipeline):
+    @patch(
+        "llm_applications_library.llm.generators.pipeline_factory.HaystackVisionGeneratorWrapper"
+    )
+    def test_create_vision_pipeline_with_retry_config(self, mock_wrapper, mock_pipeline):
         """Test vision pipeline creation with custom retry config."""
         mock_pipeline_instance = MagicMock()
         mock_pipeline.return_value = mock_pipeline_instance
