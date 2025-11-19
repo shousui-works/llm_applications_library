@@ -251,6 +251,7 @@ class ClaudeVisionGenerator:
         self,
         base64_image: str,
         mime_type: str,
+        prompt: str = "この画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -259,14 +260,15 @@ class ClaudeVisionGenerator:
         Args:
             base64_image: Base64エンコードされた画像データ
             mime_type: 画像のMIMEタイプ（例: "image/jpeg", "image/png"）
-            system_prompt: 分析指示プロンプト（オプション）
+            prompt: 画像に対する分析指示（デフォルト: "この画像を詳細に分析してください。"）
+            system_prompt: システムプロンプト（オプション）
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
             dict[str, Any]: レスポンス辞書
         """
 
-        # Claude APIの画像メッセージ形式
+        # Claude APIの画像メッセージ形式（画像とテキストの両方が必要）
         messages = [
             {
                 "role": "user",
@@ -278,6 +280,10 @@ class ClaudeVisionGenerator:
                             "media_type": mime_type,
                             "data": base64_image,
                         },
+                    },
+                    {
+                        "type": "text",
+                        "text": prompt,
                     },
                 ],
             }
@@ -311,6 +317,7 @@ class ClaudeVisionGenerator:
     def run_from_file(
         self,
         image_path: str,
+        prompt: str = "この画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -318,7 +325,8 @@ class ClaudeVisionGenerator:
 
         Args:
             image_path: 画像ファイルのパス
-            system_prompt: 分析指示プロンプト（オプション）
+            prompt: 画像に対する分析指示（デフォルト: "この画像を詳細に分析してください。"）
+            system_prompt: システムプロンプト（オプション）
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
@@ -342,6 +350,7 @@ class ClaudeVisionGenerator:
         return self.run(
             base64_image=base64_image,
             mime_type=mime_type,
+            prompt=prompt,
             system_prompt=system_prompt,
             generation_kwargs=generation_kwargs,
         )
