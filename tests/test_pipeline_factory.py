@@ -54,7 +54,10 @@ class TestHaystackGeneratorWrapper:
         mock_generator.run.assert_called_once_with(
             prompt="Test prompt", generation_kwargs={}
         )
-        assert result == {"replies": ["Generated response"]}
+        # Check that result includes both replies and usage
+        assert "replies" in result
+        assert "usage" in result
+        assert result["replies"] == ["Generated response"]
 
     @patch(
         "llm_applications_library.llm.generators.pipeline_factory.GeneratorFactory.create_text_generator"
@@ -70,7 +73,10 @@ class TestHaystackGeneratorWrapper:
         wrapper = HaystackGeneratorWrapper(model="gpt-4o")
         result = wrapper.run("Test prompt")
 
-        assert result == {"replies": []}
+        # Check that result includes both replies and usage
+        assert "replies" in result
+        assert "usage" in result
+        assert result["replies"] == []
 
 
 class TestHaystackVisionGeneratorWrapper:
@@ -121,7 +127,10 @@ class TestHaystackVisionGeneratorWrapper:
             prompt="Analyze this image",
             generation_kwargs={},
         )
-        assert result == {"replies": ["Image analysis result"]}
+        # Check that result includes both replies and usage
+        assert "replies" in result
+        assert "usage" in result
+        assert result["replies"] == ["Image analysis result"]
 
     @patch(
         "llm_applications_library.llm.generators.pipeline_factory.GeneratorFactory.create_vision_generator"
@@ -143,7 +152,10 @@ class TestHaystackVisionGeneratorWrapper:
             prompt="この画像を詳細に分析してください。",
             generation_kwargs={},
         )
-        assert result == {"replies": ["Analysis result"]}
+        # Check that result includes both replies and usage
+        assert "replies" in result
+        assert "usage" in result
+        assert result["replies"] == ["Analysis result"]
 
 
 class TestCreatePipeline:
@@ -173,7 +185,7 @@ class TestCreatePipeline:
 
         # Verify pipeline components were added
         assert mock_pipeline_instance.add_component.call_count == 3
-        assert mock_pipeline_instance.connect.call_count == 2
+        assert mock_pipeline_instance.connect.call_count == 3
         assert result == mock_pipeline_instance
 
     def test_create_pipeline_error_handling(self):
@@ -217,7 +229,7 @@ class TestCreateVisionPipeline:
 
         # Verify pipeline components were added
         assert mock_pipeline_instance.add_component.call_count == 3
-        assert mock_pipeline_instance.connect.call_count == 2
+        assert mock_pipeline_instance.connect.call_count == 3
         assert result == mock_pipeline_instance
 
         # Verify wrapper was called with correct parameters

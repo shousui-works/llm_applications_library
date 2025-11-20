@@ -6,9 +6,9 @@ from haystack import component
 
 @component
 class ProviderSelectableInstructGenerator:
-    @component.output_types(response=str)
-    def run(self, replies: list[str]):
-        return {"response": replies[0]}
+    @component.output_types(response=str, usage=dict)
+    def run(self, replies: list[str], usage: dict | None = None):
+        return {"response": replies[0], "usage": usage or {}}
 
 
 @component

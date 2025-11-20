@@ -35,7 +35,7 @@ class HaystackGeneratorWrapper:
         )
         self.generation_kwargs = generation_kwargs or {}
 
-    @component.output_types(replies=list[str])
+    @component.output_types(replies=list[str], usage=dict)
     def run(self, prompt: str):
         result = self.generator.run(
             prompt=prompt, generation_kwargs=self.generation_kwargs
@@ -44,10 +44,12 @@ class HaystackGeneratorWrapper:
         if hasattr(result, "content"):
             content = result.content
             replies = [content] if content else []
+            usage = result.usage.model_dump() if result.usage else {}
         else:
             # Fallback for old format (backward compatibility) - should not happen with new generators
             replies = []
-        return {"replies": [str(reply) for reply in replies]}
+            usage = {}
+        return {"replies": [str(reply) for reply in replies], "usage": usage}
 
 
 @component
@@ -65,7 +67,7 @@ class HaystackVisionGeneratorWrapper:
         )
         self.generation_kwargs = generation_kwargs or {}
 
-    @component.output_types(replies=list[str])
+    @component.output_types(replies=list[str], usage=dict)
     def run(
         self,
         base64_image: str,
@@ -82,10 +84,12 @@ class HaystackVisionGeneratorWrapper:
         if hasattr(result, "content"):
             content = result.content
             replies = [content] if content else []
+            usage = result.usage.model_dump() if result.usage else {}
         else:
             # Fallback for old format (backward compatibility) - should not happen with new generators
             replies = []
-        return {"replies": [str(reply) for reply in replies]}
+            usage = {}
+        return {"replies": [str(reply) for reply in replies], "usage": usage}
 
 
 def create_pipeline(
@@ -122,6 +126,7 @@ def create_pipeline(
 
         result = pipeline.run({"PromptBuilder": {"question": "What is AI?"}})
         response = result["ProviderSelectableInstructGenerator"]["response"]
+        usage = result["ProviderSelectableInstructGenerator"]["usage"]  # Token usage info
         ```
     """
     try:
@@ -156,7 +161,12 @@ def create_pipeline(
         # Connect pipeline components
         pipeline.connect(sender="PromptBuilder", receiver="Generator")
         pipeline.connect(
-            sender="Generator", receiver="ProviderSelectableInstructGenerator"
+            sender="Generator.replies",
+            receiver="ProviderSelectableInstructGenerator.replies",
+        )
+        pipeline.connect(
+            sender="Generator.usage",
+            receiver="ProviderSelectableInstructGenerator.usage",
         )
 
         logger.debug("Pipeline created successfully")
@@ -207,6 +217,7 @@ def create_vision_pipeline(
             }
         })
         response = result["ProviderSelectableInstructGenerator"]["response"]
+        usage = result["ProviderSelectableInstructGenerator"]["usage"]  # Token usage info
         ```
     """
     try:
@@ -245,7 +256,12 @@ def create_vision_pipeline(
             sender="VisionPromptBuilder", receiver="VisionGenerator.prompt"
         )
         pipeline.connect(
-            sender="VisionGenerator", receiver="ProviderSelectableInstructGenerator"
+            sender="VisionGenerator.replies",
+            receiver="ProviderSelectableInstructGenerator.replies",
+        )
+        pipeline.connect(
+            sender="VisionGenerator.usage",
+            receiver="ProviderSelectableInstructGenerator.usage",
         )
 
         logger.debug("Vision pipeline created successfully")
