@@ -75,8 +75,8 @@ class TestOpenAIVisionGenerator:
             generator, "_chat_completion", return_value=expected_result
         ) as mock_chat:
             result = generator.run(
-                base64_image="test_base64_data",
-                mime_type="image/png",
+                base64_images=["test_base64_data"],
+                mime_types=["image/png"],
                 system_prompt="Analyze this image",
                 generation_kwargs={"temperature": 0.1, "max_tokens": 1000},
             )

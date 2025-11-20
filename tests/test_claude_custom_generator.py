@@ -310,8 +310,8 @@ class TestClaudeVisionGenerator:
             test_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
 
             result = generator.run(
-                base64_image=test_image_b64,
-                mime_type="image/png",
+                base64_images=[test_image_b64],
+                mime_types=["image/png"],
                 system_prompt="Analyze this image",
                 generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
@@ -361,8 +361,8 @@ class TestClaudeVisionGenerator:
             test_image_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
 
             result = generator.run(
-                base64_image=test_image_b64,
-                mime_type="image/png",
+                base64_images=[test_image_b64],
+                mime_types=["image/png"],
                 system_prompt="You are an expert image analyst",
                 generation_kwargs={"temperature": 0.1, "max_tokens": 100},
             )
@@ -413,7 +413,7 @@ class TestClaudeVisionGenerator:
                     generator = ClaudeVisionGenerator(api_key="test-key")
 
                     result = generator.run_from_file(
-                        image_path=tmp_file.name,
+                        image_paths=[tmp_file.name],
                         system_prompt="Analyze this image",
                         generation_kwargs={"temperature": 0.1, "max_tokens": 100},
                     )
@@ -439,7 +439,7 @@ class TestClaudeVisionGenerator:
 
             with pytest.raises(FileNotFoundError, match="Image file not found"):
                 generator.run_from_file(
-                    image_path="non_existent_file.png",
+                    image_paths=["non_existent_file.png"],
                     system_prompt="Analyze this image",
                     generation_kwargs={"temperature": 0.1, "max_tokens": 100},
                 )
@@ -463,7 +463,7 @@ class TestClaudeVisionGenerator:
 
                     with pytest.raises(ValueError, match="Unsupported file type"):
                         generator.run_from_file(
-                            image_path=tmp_file.name,
+                            image_paths=[tmp_file.name],
                             system_prompt="Analyze this image",
                             generation_kwargs={"temperature": 0.1},
                         )

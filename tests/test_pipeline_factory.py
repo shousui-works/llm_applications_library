@@ -116,14 +116,14 @@ class TestHaystackVisionGeneratorWrapper:
 
         wrapper = HaystackVisionGeneratorWrapper(model="gpt-4o")
         result = wrapper.run(
-            base64_image="fake_base64",
-            mime_type="image/jpeg",
+            base64_images=["fake_base64"],
+            mime_types=["image/jpeg"],
             prompt="Analyze this image",
         )
 
         mock_generator.run.assert_called_once_with(
-            base64_image="fake_base64",
-            mime_type="image/jpeg",
+            base64_images=["fake_base64"],
+            mime_types=["image/jpeg"],
             prompt="Analyze this image",
             generation_kwargs={},
         )
@@ -144,11 +144,11 @@ class TestHaystackVisionGeneratorWrapper:
         mock_create_vision.return_value = mock_generator
 
         wrapper = HaystackVisionGeneratorWrapper(model="gpt-4o")
-        result = wrapper.run(base64_image="fake_base64", mime_type="image/jpeg")
+        result = wrapper.run(base64_images=["fake_base64"], mime_types=["image/jpeg"])
 
         mock_generator.run.assert_called_once_with(
-            base64_image="fake_base64",
-            mime_type="image/jpeg",
+            base64_images=["fake_base64"],
+            mime_types=["image/jpeg"],
             prompt="この画像を詳細に分析してください。",
             generation_kwargs={},
         )
