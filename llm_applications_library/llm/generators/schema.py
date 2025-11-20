@@ -88,6 +88,7 @@ class OpenAIGenerationConfig(BaseModel):
 
     temperature: float | None = None
     max_tokens: int | None = None
+    max_completion_tokens: int | None = None  # GPT-5用の新パラメータ
     top_p: float | None = None
     frequency_penalty: float | None = None
     presence_penalty: float | None = None
