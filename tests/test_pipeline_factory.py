@@ -212,7 +212,7 @@ class TestCreateVisionPipeline:
             model="gpt-4o",
             user_prompt_template="この画像について{question}を答えてください",
             required_variables=["question"],
-            generation_kwargs={"temperature": 0.7}
+            generation_kwargs={"temperature": 0.7},
         )
 
         # Verify pipeline components were added
@@ -242,7 +242,7 @@ class TestCreateVisionPipeline:
             model="claude-3-haiku",
             user_prompt_template="Analyze this image: {description}",
             required_variables=["description"],
-            retry_config=retry_config
+            retry_config=retry_config,
         )
 
         assert result == mock_pipeline_instance
@@ -260,7 +260,7 @@ class TestCreateVisionPipeline:
                 create_vision_pipeline(
                     model="gpt-4o",
                     user_prompt_template="Test template",
-                    required_variables=[]
+                    required_variables=[],
                 )
 
 
@@ -299,14 +299,14 @@ class TestPipelineIntegration:
         pipeline = create_vision_pipeline(
             model="gpt-4o",
             user_prompt_template="Describe this image: {prompt}",
-            required_variables=["prompt"]
+            required_variables=["prompt"],
         )
 
         # Check components exist
         expected_components = [
             "VisionPromptBuilder",
             "VisionGenerator",
-            "ProviderSelectableInstructGenerator"
+            "ProviderSelectableInstructGenerator",
         ]
         actual_components = list(pipeline.graph.nodes())
 
@@ -315,7 +315,7 @@ class TestPipelineIntegration:
         # Check connections
         expected_connections = [
             ("VisionPromptBuilder", "VisionGenerator"),
-            ("VisionGenerator", "ProviderSelectableInstructGenerator")
+            ("VisionGenerator", "ProviderSelectableInstructGenerator"),
         ]
         actual_connections = list(pipeline.graph.edges())
 
