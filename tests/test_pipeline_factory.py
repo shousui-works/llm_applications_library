@@ -209,12 +209,15 @@ class TestCreateVisionPipeline:
         mock_pipeline.return_value = mock_pipeline_instance
 
         result = create_vision_pipeline(
-            model="gpt-4o", generation_kwargs={"temperature": 0.7}
+            model="gpt-4o",
+            user_prompt_template="この画像について{question}を答えてください",
+            required_variables=["question"],
+            generation_kwargs={"temperature": 0.7},
         )
 
         # Verify pipeline components were added
-        assert mock_pipeline_instance.add_component.call_count == 2
-        assert mock_pipeline_instance.connect.call_count == 1
+        assert mock_pipeline_instance.add_component.call_count == 3
+        assert mock_pipeline_instance.connect.call_count == 2
         assert result == mock_pipeline_instance
 
         # Verify wrapper was called with correct parameters
@@ -236,7 +239,10 @@ class TestCreateVisionPipeline:
 
         retry_config = RetryConfig(max_attempts=5)
         result = create_vision_pipeline(
-            model="claude-3-haiku", retry_config=retry_config
+            model="claude-3-haiku",
+            user_prompt_template="Analyze this image: {description}",
+            required_variables=["description"],
+            retry_config=retry_config,
         )
 
         assert result == mock_pipeline_instance
@@ -251,7 +257,11 @@ class TestCreateVisionPipeline:
             with pytest.raises(
                 PipelineCreationError, match="Vision pipeline creation failed"
             ):
-                create_vision_pipeline(model="gpt-4o")
+                create_vision_pipeline(
+                    model="gpt-4o",
+                    user_prompt_template="Test template",
+                    required_variables=[],
+                )
 
 
 class TestPipelineIntegration:
@@ -286,17 +296,26 @@ class TestPipelineIntegration:
 
     def test_vision_pipeline_components_structure(self):
         """Test that vision pipeline has correct component structure."""
-        pipeline = create_vision_pipeline(model="gpt-4o")
+        pipeline = create_vision_pipeline(
+            model="gpt-4o",
+            user_prompt_template="Describe this image: {prompt}",
+            required_variables=["prompt"],
+        )
 
         # Check components exist
-        expected_components = ["VisionGenerator", "ProviderSelectableInstructGenerator"]
+        expected_components = [
+            "VisionPromptBuilder",
+            "VisionGenerator",
+            "ProviderSelectableInstructGenerator",
+        ]
         actual_components = list(pipeline.graph.nodes())
 
         assert set(expected_components) == set(actual_components)
 
         # Check connections
         expected_connections = [
-            ("VisionGenerator", "ProviderSelectableInstructGenerator")
+            ("VisionPromptBuilder", "VisionGenerator"),
+            ("VisionGenerator", "ProviderSelectableInstructGenerator"),
         ]
         actual_connections = list(pipeline.graph.edges())
 
