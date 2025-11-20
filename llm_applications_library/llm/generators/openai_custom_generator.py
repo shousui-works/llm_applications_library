@@ -84,7 +84,9 @@ class RetryOpenAIGenerator:
                     if "max_tokens" in config_dict:
                         if "max_completion_tokens" not in config_dict:
                             # Convert max_tokens to max_completion_tokens
-                            config_dict["max_completion_tokens"] = config_dict["max_tokens"]
+                            config_dict["max_completion_tokens"] = config_dict[
+                                "max_tokens"
+                            ]
                         # Remove max_tokens for GPT-5 models
                         config_dict.pop("max_tokens")
 
@@ -231,7 +233,9 @@ class OpenAIVisionGenerator:
             if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
                 if "max_tokens" in generation_params:
                     if "max_completion_tokens" not in generation_params:
-                        generation_params["max_completion_tokens"] = generation_params["max_tokens"]
+                        generation_params["max_completion_tokens"] = generation_params[
+                            "max_tokens"
+                        ]
                     generation_params.pop("max_tokens")
         else:
             generation_params = {}
@@ -239,7 +243,10 @@ class OpenAIVisionGenerator:
         # Set sensible defaults if not specified
         if "temperature" not in generation_params:
             generation_params["temperature"] = 0.1
-        if "max_tokens" not in generation_params and "max_completion_tokens" not in generation_params:
+        if (
+            "max_tokens" not in generation_params
+            and "max_completion_tokens" not in generation_params
+        ):
             # Use max_completion_tokens for GPT-5 models, max_tokens for others
             if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
                 generation_params["max_completion_tokens"] = 4096
