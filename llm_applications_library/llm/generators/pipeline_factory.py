@@ -169,6 +169,8 @@ def create_pipeline(
 
 def create_vision_pipeline(
     model: str,
+    user_prompt_template: str,
+    required_variables: list[str],
     generation_kwargs: dict[str, Any] | None = None,
     retry_config: RetryConfig | None = None,
 ) -> Pipeline:
@@ -177,6 +179,8 @@ def create_vision_pipeline(
 
     Args:
         model: Model name (e.g., "gpt-4o", "claude-sonnet-4-5-20250929")
+        user_prompt_template: Template string for the vision prompt
+        required_variables: List of required template variables
         generation_kwargs: Optional generation parameters
         retry_config: Optional retry configuration
 
@@ -190,14 +194,16 @@ def create_vision_pipeline(
         ```python
         pipeline = create_vision_pipeline(
             model="gpt-4o",
+            user_prompt_template="この画像について{question}を答えてください",
+            required_variables=["question"],
             generation_kwargs={"temperature": 0.7, "max_tokens": 100}
         )
 
         result = pipeline.run({
+            "VisionPromptBuilder": {"question": "何が写っていますか？"},
             "VisionGenerator": {
                 "base64_image": "base64_encoded_image_data",
-                "mime_type": "image/jpeg",
-                "prompt": "この画像の内容を説明してください"
+                "mime_type": "image/jpeg"
             }
         })
         response = result["ProviderSelectableInstructGenerator"]["response"]
@@ -211,6 +217,14 @@ def create_vision_pipeline(
             retry_config = RetryConfig()
 
         pipeline = Pipeline()
+
+        # Add VisionPromptBuilder component
+        pipeline.add_component(
+            name="VisionPromptBuilder",
+            instance=PromptBuilder(
+                template=user_prompt_template, required_variables=required_variables
+            ),
+        )
 
         # Add vision generator wrapper that uses GeneratorFactory
         vision_generator_wrapper = HaystackVisionGeneratorWrapper(
@@ -227,6 +241,9 @@ def create_vision_pipeline(
         )
 
         # Connect pipeline components
+        pipeline.connect(
+            sender="VisionPromptBuilder", receiver="VisionGenerator.prompt"
+        )
         pipeline.connect(
             sender="VisionGenerator", receiver="ProviderSelectableInstructGenerator"
         )
