@@ -181,10 +181,10 @@ class TestClaudeVisionGeneratorIntegration:
         generator = ClaudeVisionGenerator(api_key=api_key)
 
         result = generator.run(
-            base64_image=test_image_base64,
-            mime_type="image/png",
+            base64_images=[test_image_base64],
+            mime_types=["image/png"],
             prompt="What do you see in this image? Respond briefly.",
-            model_config=claude_config,
+            generation_kwargs=claude_config,
         )
 
         assert "replies" in result
@@ -215,10 +215,10 @@ class TestClaudeVisionGeneratorIntegration:
         generator = ClaudeVisionGenerator(api_key=api_key)
 
         result = generator.run(
-            base64_image=test_image_base64,
-            mime_type="image/png",
+            base64_images=[test_image_base64],
+            mime_types=["image/png"],
             prompt="Describe what you see.",
-            model_config=claude_config,
+            generation_kwargs=claude_config,
             system_prompt="You are a concise image analyst. Keep responses under 20 words.",
         )
 
@@ -252,9 +252,9 @@ class TestClaudeVisionGeneratorIntegration:
                 generator = ClaudeVisionGenerator(api_key=api_key)
 
                 result = generator.run_from_file(
-                    image_path=tmp_file.name,
+                    image_paths=[tmp_file.name],
                     prompt="What is this?",
-                    model_config=claude_config,
+                    generation_kwargs=claude_config,
                 )
 
                 assert "replies" in result
@@ -279,10 +279,10 @@ class TestClaudeVisionGeneratorIntegration:
         generator = ClaudeVisionGenerator(api_key=api_key)
 
         result = generator.run(
-            base64_image="invalid_base64_data",
-            mime_type="image/png",
+            base64_images=["invalid_base64_data"],
+            mime_types=["image/png"],
             prompt="What do you see?",
-            model_config=claude_config,
+            generation_kwargs=claude_config,
         )
 
         assert "replies" in result

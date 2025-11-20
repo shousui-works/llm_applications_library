@@ -294,47 +294,61 @@ class ClaudeVisionGenerator:
 
     def run(
         self,
-        base64_image: str,
-        mime_type: str,
-        prompt: str = "この画像を詳細に分析してください。",
+        base64_images: list[str],
+        mime_types: list[str],
+        prompt: str = "これらの画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> GeneratorResponse:
-        """Claude Vision APIを使用して画像を解析する
+        """Claude Vision APIを使用して画像を解析する（単一または複数画像対応）
 
         Args:
-            base64_image: Base64エンコードされた画像データ
-            mime_type: 画像のMIMEタイプ（例: "image/jpeg", "image/png"）
-            prompt: 画像に対する分析指示（デフォルト: "この画像を詳細に分析してください。"）
+            base64_images: Base64エンコードされた画像データのリスト
+            mime_types: 画像のMIMEタイプのリスト（例: ["image/jpeg", "image/png"]）
+            prompt: 画像に対する分析指示（デフォルト: "これらの画像を詳細に分析してください。"）
             system_prompt: システムプロンプト（オプション）
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            VisionGeneratorResponse: 統一されたVision分析レスポンス
+            GeneratorResponse: 統一されたVision分析レスポンス
+
+        Note:
+            単一画像の場合: base64_images=["image_data"], mime_types=["image/jpeg"]
+            複数画像の場合: base64_images=["img1", "img2", ...], mime_types=["image/jpeg", "image/png", ...]
+            リストの長さは一致している必要があります
         """
 
-        # Validate inputs
-        if not base64_image or not base64_image.strip():
-            raise ValueError("base64_image cannot be empty")
+        # Validate input lengths
+        if len(base64_images) != len(mime_types):
+            raise ValueError("Length of base64_images and mime_types must match")
 
-        if not mime_type:
-            raise ValueError("mime_type cannot be empty")
+        if not base64_images:
+            raise ValueError("At least one image must be provided")
 
-        # Validate base64 data
-        try:
-            import base64 as b64_module
-
-            # Test if it's valid base64
-            b64_module.b64decode(base64_image, validate=True)
-        except Exception as e:
-            raise ValueError(f"Invalid base64 image data: {e}")
-
-        # Ensure mime_type is valid for Claude
+        # Validate each image
         valid_mime_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
-        if mime_type not in valid_mime_types:
-            logger.warning(
-                f"Potentially unsupported mime_type: {mime_type}. Supported: {valid_mime_types}"
-            )
+        import base64 as b64_module
+
+        for i, (base64_image, mime_type) in enumerate(zip(base64_images, mime_types)):
+            # Validate inputs
+            if not base64_image or not base64_image.strip():
+                raise ValueError(f"base64_image {i} cannot be empty")
+
+            if not mime_type:
+                raise ValueError(f"mime_type {i} cannot be empty")
+
+            # Validate base64 data
+            try:
+                # Test if it's valid base64
+                b64_module.b64decode(base64_image, validate=True)
+            except Exception as e:
+                raise ValueError(f"Invalid base64 image data for image {i}: {e}")
+
+            # Ensure mime_type is valid for Claude
+            if mime_type not in valid_mime_types:
+                logger.warning(
+                    f"Potentially unsupported mime_type for image {i}: {mime_type}. Supported: {valid_mime_types}"
+                )
 
         # Check prompt length and warn if too long
         if len(prompt) > 10000:  # Warn for very long prompts
@@ -353,30 +367,40 @@ class ClaudeVisionGenerator:
             )
             prompt = truncated_prompt
 
-        # Claude APIの画像メッセージ形式（画像とテキストの両方が必要）
+        # Claude APIの画像メッセージ形式（複数画像とテキスト対応）
+        content = []
+
+        # Add all images
+        for base64_image, mime_type in zip(base64_images, mime_types):
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": mime_type,
+                        "data": base64_image,
+                    },
+                }
+            )
+
+        # Add text prompt
+        content.append(
+            {
+                "type": "text",
+                "text": prompt,
+            }
+        )
+
         messages = [
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime_type,
-                            "data": base64_image,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    },
-                ],
+                "content": content,
             }
         ]
 
         # Debug logging
         logger.debug(
-            f"Claude Vision API request - mime_type: {mime_type}, prompt length: {len(prompt)}, image data length: {len(base64_image)}"
+            f"Claude Vision API request - {len(base64_images)} images, prompt length: {len(prompt)}, mime_types: {mime_types}"
         )
         logger.debug(f"Messages structure: {len(messages[0]['content'])} content items")
 
@@ -420,40 +444,53 @@ class ClaudeVisionGenerator:
 
     def run_from_file(
         self,
-        image_path: str,
+        image_paths: list[str],
         prompt: str = "この画像を詳細に分析してください。",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> GeneratorResponse:
-        """ファイルパスから画像を読み込んでClaude Vision APIで解析
+        """ファイルパスから画像を読み込んでClaude Vision APIで解析（単一または複数画像対応）
 
         Args:
-            image_path: 画像ファイルのパス
+            image_paths: 画像ファイルのパスのリスト
             prompt: 画像に対する分析指示（デフォルト: "この画像を詳細に分析してください。"）
             system_prompt: システムプロンプト（オプション）
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            VisionGeneratorResponse: 統一されたVision分析レスポンス
+            GeneratorResponse: 統一されたVision分析レスポンス
         """
         import mimetypes
 
-        # ファイルの存在確認
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image file not found: {image_path}")
+        if not image_paths:
+            raise ValueError("At least one image path must be provided")
 
-        # MIMEタイプの推定
-        mime_type, _ = mimetypes.guess_type(image_path)
-        if not mime_type or not mime_type.startswith("image/"):
-            raise ValueError(f"Unsupported file type: {mime_type}")
+        base64_images = []
+        mime_types = []
 
-        # 画像ファイルをBase64エンコード
-        with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+        # 各ファイルを処理
+        for image_path in image_paths:
+            # ファイルの存在確認
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Image file not found: {image_path}")
+
+            # MIMEタイプの推定
+            mime_type, _ = mimetypes.guess_type(image_path)
+            if not mime_type or not mime_type.startswith("image/"):
+                raise ValueError(
+                    f"Unsupported file type: {mime_type} for file: {image_path}"
+                )
+
+            # 画像ファイルをBase64エンコード
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+            base64_images.append(base64_image)
+            mime_types.append(mime_type)
 
         return self.run(
-            base64_image=base64_image,
-            mime_type=mime_type,
+            base64_images=base64_images,
+            mime_types=mime_types,
             prompt=prompt,
             system_prompt=system_prompt,
             generation_kwargs=generation_kwargs,

@@ -70,13 +70,13 @@ class HaystackVisionGeneratorWrapper:
     @component.output_types(replies=list[str], usage=dict)
     def run(
         self,
-        base64_image: str,
-        mime_type: str,
+        base64_images: list[str],
+        mime_types: list[str],
         prompt: str = "この画像を詳細に分析してください。",
     ):
         result = self.generator.run(
-            base64_image=base64_image,
-            mime_type=mime_type,
+            base64_images=base64_images,
+            mime_types=mime_types,
             prompt=prompt,
             generation_kwargs=self.generation_kwargs,
         )
@@ -212,8 +212,8 @@ def create_vision_pipeline(
         result = pipeline.run({
             "VisionPromptBuilder": {"question": "何が写っていますか？"},
             "VisionGenerator": {
-                "base64_image": "base64_encoded_image_data",
-                "mime_type": "image/jpeg"
+                "base64_images": ["base64_encoded_image_data"],
+                "mime_types": ["image/jpeg"]
             }
         })
         response = result["ProviderSelectableInstructGenerator"]["response"]

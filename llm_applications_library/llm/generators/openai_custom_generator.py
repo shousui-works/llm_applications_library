@@ -186,43 +186,66 @@ class OpenAIVisionGenerator:
 
     def run(
         self,
-        base64_image: str,
-        mime_type: str,
-        prompt: str = "Please analyze this image in detail.",
+        base64_images: list[str],
+        mime_types: list[str],
+        prompt: str = "Please analyze these images in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> GeneratorResponse:
-        """OpenAI Vision APIを使用して画像またはPDFを解析する
+        """OpenAI Vision APIを使用して画像またはPDFを解析する（単一または複数画像対応）
 
         Args:
-            base64_image (str): Base64エンコードされた画像データ
-            mime_type (str): 画像のMIMEタイプ
-            prompt (str): 画像に対する分析指示（デフォルト: "Please analyze this image in detail."）
+            base64_images (list[str]): Base64エンコードされた画像データのリスト
+            mime_types (list[str]): 画像のMIMEタイプのリスト
+            prompt (str): 画像に対する分析指示（デフォルト: "Please analyze these images in detail."）
             system_prompt (str, optional): システムプロンプト
             generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            VisionGeneratorResponse: 統一されたVision分析レスポンス
+            GeneratorResponse: 統一されたVision分析レスポンス
+
+        Note:
+            単一画像の場合: base64_images=["image_data"], mime_types=["image/jpeg"]
+            複数画像の場合: base64_images=["img1", "img2", ...], mime_types=["image/jpeg", "image/png", ...]
+            リストの長さは一致している必要があります
         """
+
+        # Validate input lengths
+        if len(base64_images) != len(mime_types):
+            raise ValueError("Length of base64_images and mime_types must match")
+
+        if not base64_images:
+            raise ValueError("At least one image must be provided")
 
         # Build messages with optional system prompt
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 
+        # Build content array with multiple images and text prompt
+        content = []
+
+        # Add all images
+        for base64_image, mime_type in zip(base64_images, mime_types):
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
+                }
+            )
+
+        # Add text prompt
+        content.append(
+            {
+                "type": "text",
+                "text": prompt,
+            }
+        )
+
         messages.append(
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
-                    },
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    },
-                ],
+                "content": content,
             }
         )
 
@@ -277,41 +300,54 @@ class OpenAIVisionGenerator:
 
     def run_from_file(
         self,
-        image_path: str,
-        prompt: str = "Please analyze this image in detail.",
+        image_paths: list[str],
+        prompt: str = "Please analyze these images in detail.",
         system_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> GeneratorResponse:
-        """ファイルパスから画像を読み込んでOpenAI Vision APIで解析
+        """ファイルパスから画像を読み込んでOpenAI Vision APIで解析（単一または複数画像対応）
 
         Args:
-            image_path: 画像ファイルのパス
-            prompt: 画像に対する分析指示（デフォルト: "Please analyze this image in detail."）
+            image_paths: 画像ファイルのパスのリスト
+            prompt: 画像に対する分析指示（デフォルト: "Please analyze these images in detail."）
             system_prompt: システムプロンプト（オプション）
             generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
 
         Returns:
-            VisionGeneratorResponse: 統一されたVision分析レスポンス
+            GeneratorResponse: 統一されたVision分析レスポンス
         """
         import base64
         import mimetypes
 
-        # ファイルの存在確認
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image file not found: {image_path}")
+        if not image_paths:
+            raise ValueError("At least one image path must be provided")
 
-        # MIMEタイプの推定
-        mime_type, _ = mimetypes.guess_type(image_path)
-        if not mime_type or not mime_type.startswith("image/"):
-            raise ValueError(f"Unsupported file type: {mime_type}")
+        base64_images = []
+        mime_types = []
 
-        # 画像ファイルをBase64エンコード
-        with open(image_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+        # 各ファイルを処理
+        for image_path in image_paths:
+            # ファイルの存在確認
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Image file not found: {image_path}")
+
+            # MIMEタイプの推定
+            mime_type, _ = mimetypes.guess_type(image_path)
+            if not mime_type or not mime_type.startswith("image/"):
+                raise ValueError(
+                    f"Unsupported file type: {mime_type} for file: {image_path}"
+                )
+
+            # 画像ファイルをBase64エンコード
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+            base64_images.append(base64_image)
+            mime_types.append(mime_type)
 
         return self.run(
-            base64_image=base64_image,
-            mime_type=mime_type,
+            base64_images=base64_images,
+            mime_types=mime_types,
             prompt=prompt,
             system_prompt=system_prompt,
             generation_kwargs=generation_kwargs,
