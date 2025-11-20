@@ -132,6 +132,7 @@ class OpenAIVisionGenerator:
         temperature: float = 0.1,
         response_format: dict[str, str] | None = None,
         max_tokens: int | None = None,
+        max_completion_tokens: int | None = None,
         api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ) -> dict[str, Any]:
@@ -153,7 +154,11 @@ class OpenAIVisionGenerator:
 
             if response_format:
                 kwargs["response_format"] = response_format
-            if max_tokens:
+
+            # Handle token limits - prefer max_completion_tokens if provided
+            if max_completion_tokens:
+                kwargs["max_completion_tokens"] = max_completion_tokens
+            elif max_tokens:
                 # Use max_completion_tokens for GPT-5 models, max_tokens for others
                 if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
                     kwargs["max_completion_tokens"] = max_tokens
