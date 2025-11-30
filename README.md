@@ -127,6 +127,13 @@ ruff check src/ tests/
 ruff format src/ tests/
 ```
 
+## 更新履歴
+
+### v0.1.20
+- VisionGenerator複数画像対応を追加
+- パイプライン実行結果でusage情報の取得を可能に
+- OpenAIVisionGeneratorでmax_completion_tokensパラメータを正しく処理
+
 ## ライセンス
 
 MIT License
