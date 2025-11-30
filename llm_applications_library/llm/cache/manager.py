@@ -328,7 +328,7 @@ class CacheManager:
         return False
 
     def delete_by_component(
-        self, component_substring: str, step_type: str = None
+        self, component_substring: str, step_type: str | None = None
     ) -> int:
         """
         特定のコンポーネントを含むキャッシュエントリを削除

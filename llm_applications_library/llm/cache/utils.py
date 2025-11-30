@@ -2,10 +2,20 @@ import hashlib
 import json
 import logging
 import os
+import traceback
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-# get_cache_manager will be imported locally to avoid circular imports
+if TYPE_CHECKING:
+    from llm.cache.manager import CacheManager
+
+# Import utilities that might not be available in all environments
+try:
+    from storage.gcs import get_gcs_client
+
+    GCS_AVAILABLE = True
+except ImportError:
+    GCS_AVAILABLE = False
 
 
 def generate_file_hash(file_path: Path) -> str:
@@ -92,8 +102,6 @@ def generate_file_list_content_hash(file_list) -> str:
 
     except Exception as e:
         logger.error(f"Error generating file list content hash: {e}")
-        import traceback
-
         logger.error(f"Stack trace: {traceback.format_exc()}")
 
         # エラーの場合はファイル名のみでフォールバック
@@ -126,9 +134,14 @@ def generate_gcs_directory_content_hash(gcs_directory_url: str) -> str:
     Returns:
         str: ディレクトリ内容のハッシュ
     """
-    try:
-        from utils.gcs import get_gcs_client
+    if not GCS_AVAILABLE:
+        # GCS utilities not available, fallback to URL-based hash
+        logging.getLogger(__name__).warning(
+            "GCS utilities not available, using URL-based hash"
+        )
+        return hashlib.sha256(gcs_directory_url.encode()).hexdigest()
 
+    try:
         gcs_client = get_gcs_client()
         file_list = gcs_client.list_files_in_directory(
             gcs_directory_url, use_cache=False
@@ -291,21 +304,24 @@ class CacheCleanupContext:
         self.cache_key = cache_key
         self.step_type = step_type
         self.cleanup_component = cleanup_component
-        # Use lazy import to avoid circular dependency
-        from services.cache.manager import get_cache_manager
-
-        self.cache_manager = get_cache_manager()
+        self.cache_manager: "CacheManager | None" = None
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:  # エラーが発生した場合
+            # Lazy import to avoid circular dependency
+            if self.cache_manager is None:
+                from core.cache.manager import get_cache_manager
+
+                self.cache_manager = get_cache_manager()
+
             logger = logging.getLogger(__name__)
             cleaned_up = False
 
             # 特定のキャッシュキーを削除
-            if self.cache_key:
+            if self.cache_key and self.cache_manager:
                 deleted = self.cache_manager.delete_on_openai_error(
                     self.cache_key, exc_val
                 )
@@ -316,7 +332,7 @@ class CacheCleanupContext:
                     )
 
             # コンポーネント関連のキャッシュを削除
-            if self.cleanup_component:
+            if self.cleanup_component and self.cache_manager:
                 deleted_count = self.cache_manager.delete_by_component(
                     self.cleanup_component, self.step_type
                 )
