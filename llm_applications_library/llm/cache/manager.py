@@ -34,7 +34,7 @@ class CacheEntry(BaseModel):
     created_at: float
     last_accessed: float
     access_count: int = 0
-    step_type: str = ''
+    step_type: str = ""
 
 
 class CacheManager:
@@ -42,7 +42,7 @@ class CacheManager:
 
     def __init__(
         self,
-        cache_dir: str = '.cache',
+        cache_dir: str = ".cache",
         max_size_mb: int = 1000,
         default_ttl: int = 3600 * 24,  # 24時間
         step_ttls: dict[str, int] | None = None,
@@ -63,19 +63,27 @@ class CacheManager:
         self.cache = diskcache.Cache(
             str(self.cache_dir),
             size_limit=max_size_mb * 1024 * 1024,  # バイトに変換
-            eviction_policy='least-recently-used',
+            eviction_policy="least-recently-used",
         )
 
         self.default_ttl = default_ttl
         self.step_ttls = step_ttls or {
-            'file_analysis': 3600 * 24 * 7,  # 7日間
-            'file_selection': 3600 * 24 * 3,  # 3日間
-            'info_extraction': 3600 * 24 * 7,  # 7日間
-            'report_generation': 3600 * 24,  # 1日間
-            'pdf_text_extraction': 3600 * 24 * 30,  # 30日間(PDFテキストは変わらないため長期)
-            'pdf_text_check': 3600 * 24 * 30,  # 30日間(PDFテキスト有無も変わらないため長期)
-            'gcs_file_listing': 3600 * 24 * 7,  # 7日間(ファイルリストは変わる可能性があるため中期)
-            'gcs_text_read': 3600 * 24 * 30,  # 30日間(GCSテキストファイルは変わらないため長期)
+            "file_analysis": 3600 * 24 * 7,  # 7日間
+            "file_selection": 3600 * 24 * 3,  # 3日間
+            "info_extraction": 3600 * 24 * 7,  # 7日間
+            "report_generation": 3600 * 24,  # 1日間
+            "pdf_text_extraction": 3600
+            * 24
+            * 30,  # 30日間(PDFテキストは変わらないため長期)
+            "pdf_text_check": 3600
+            * 24
+            * 30,  # 30日間(PDFテキスト有無も変わらないため長期)
+            "gcs_file_listing": 3600
+            * 24
+            * 7,  # 7日間(ファイルリストは変わる可能性があるため中期)
+            "gcs_text_read": 3600
+            * 24
+            * 30,  # 30日間(GCSテキストファイルは変わらないため長期)
         }
 
         # 統計情報
@@ -85,7 +93,7 @@ class CacheManager:
         """ステップタイプに応じたTTLを取得"""
         return self.step_ttls.get(step_type, self.default_ttl)
 
-    def _create_cache_entry(self, data: Any, step_type: str = '') -> CacheEntry:
+    def _create_cache_entry(self, data: Any, step_type: str = "") -> CacheEntry:
         """キャッシュエントリを作成"""
         now = time.time()
         return CacheEntry(
@@ -96,7 +104,7 @@ class CacheManager:
             step_type=step_type,
         )
 
-    def get(self, key: str, step_type: str = '') -> tuple[Any | None, bool]:
+    def get(self, key: str, step_type: str = "") -> tuple[Any | None, bool]:
         """
         キャッシュからデータを取得
 
@@ -108,14 +116,14 @@ class CacheManager:
             (データ, キャッシュヒットフラグ)
         """
         if not validate_cache_key(key):
-            logger.warning(f'Invalid cache key: {key}')
+            logger.warning(f"Invalid cache key: {key}")
             self.stats.misses += 1
             return None, False
 
         try:
             entry_data = self.cache.get(key)
             if entry_data is None:
-                logger.debug(f'Cache miss for key: {key[:16]}... (step: {step_type})')
+                logger.debug(f"Cache miss for key: {key[:16]}... (step: {step_type})")
                 self.stats.misses += 1
                 return None, False
 
@@ -125,7 +133,7 @@ class CacheManager:
             # TTLチェック
             ttl = self._get_ttl(step_type or entry.step_type)
             if time.time() - entry.created_at > ttl:
-                logger.debug(f'Cache entry expired for key: {key[:16]}...')
+                logger.debug(f"Cache entry expired for key: {key[:16]}...")
                 self.cache.delete(key)
                 self.stats.misses += 1
                 return None, False
@@ -135,17 +143,17 @@ class CacheManager:
             entry.access_count += 1
             self.cache.set(key, entry.model_dump())
 
-            logger.debug(f'Cache hit for key: {key[:16]}... (step: {step_type})')
+            logger.debug(f"Cache hit for key: {key[:16]}... (step: {step_type})")
             self.stats.hits += 1
 
         except Exception:
-            logger.exception('Error getting cache entry')
+            logger.exception("Error getting cache entry")
             self.stats.misses += 1
             return None, False
         else:
             return entry.data, True
 
-    def set(self, key: str, data: Any, step_type: str = '') -> bool:
+    def set(self, key: str, data: Any, step_type: str = "") -> bool:
         """
         データをキャッシュに保存
 
@@ -158,17 +166,17 @@ class CacheManager:
             保存成功フラグ
         """
         if not validate_cache_key(key):
-            logger.warning(f'Invalid cache key: {key}')
+            logger.warning(f"Invalid cache key: {key}")
             return False
 
         try:
             entry = self._create_cache_entry(data, step_type)
             self.cache.set(key, entry.model_dump())
 
-            logger.debug(f'Cache set for key: {key[:16]}... (step: {step_type})')
+            logger.debug(f"Cache set for key: {key[:16]}... (step: {step_type})")
 
         except Exception:
-            logger.exception('Error setting cache entry')
+            logger.exception("Error setting cache entry")
             return False
         else:
             return True
@@ -189,9 +197,9 @@ class CacheManager:
         try:
             result = self.cache.delete(key)
             if result:
-                logger.debug(f'Cache deleted for key: {key[:16]}...')
+                logger.debug(f"Cache deleted for key: {key[:16]}...")
         except Exception:
-            logger.exception('Error deleting cache entry')
+            logger.exception("Error deleting cache entry")
             return False
         else:
             return result
@@ -211,7 +219,7 @@ class CacheManager:
                 # 全てクリア
                 count = len(self.cache)
                 self.cache.clear()
-                logger.info(f'Cleared all cache entries: {count}')
+                logger.info(f"Cleared all cache entries: {count}")
                 return count
             # 特定のステップタイプのみクリア
             count = 0
@@ -225,17 +233,17 @@ class CacheManager:
                         if entry.step_type == step_type:
                             keys_to_delete.append(key)
                 except Exception:
-                    logger.debug(f'Failed to process cache entry {key}')
+                    logger.debug(f"Failed to process cache entry {key}")
                     continue
 
             for key in keys_to_delete:
                 if self.cache.delete(key):
                     count += 1
 
-            logger.info(f'Cleared {count} cache entries for step type: {step_type}')
+            logger.info(f"Cleared {count} cache entries for step type: {step_type}")
 
         except Exception:
-            logger.exception('Error clearing cache')
+            logger.exception("Error clearing cache")
             return 0
         else:
             return count
@@ -247,7 +255,7 @@ class CacheManager:
             self.stats.total_keys = len(self.cache)
             self.stats.size_mb = self.cache.volume() / (1024 * 1024)
         except Exception:
-            logger.exception('Error getting cache stats')
+            logger.exception("Error getting cache stats")
         return self.stats
 
     def cleanup_expired(self) -> int:
@@ -274,10 +282,10 @@ class CacheManager:
                     count += 1
 
             if count > 0:
-                logger.info(f'Cleaned up {count} expired cache entries')
+                logger.info(f"Cleaned up {count} expired cache entries")
 
         except Exception:
-            logger.exception('Error during cache cleanup')
+            logger.exception("Error during cache cleanup")
             return 0
         else:
             return count
@@ -298,26 +306,30 @@ class CacheManager:
 
         # OpenAI APIエラーの場合にキャッシュを削除
         openai_error_types = [
-            'RateLimitError',
-            'APITimeoutError',
-            'InternalServerError',
-            'APIConnectionError',
-            'BadRequestError',
-            'AuthenticationError',
-            'APIError',
-            'OpenAIError',
+            "RateLimitError",
+            "APITimeoutError",
+            "InternalServerError",
+            "APIConnectionError",
+            "BadRequestError",
+            "AuthenticationError",
+            "APIError",
+            "OpenAIError",
         ]
 
         error_type = type(error).__name__
-        if error_type in openai_error_types or 'openai' in str(error).lower():
+        if error_type in openai_error_types or "openai" in str(error).lower():
             deleted = self.delete(cache_key)
             if deleted:
-                logger.info(f'Deleted cache entry due to OpenAI error ({error_type}): {cache_key[:16]}...')
+                logger.info(
+                    f"Deleted cache entry due to OpenAI error ({error_type}): {cache_key[:16]}..."
+                )
             return deleted
 
         return False
 
-    def delete_by_component(self, component_substring: str, step_type: str = None) -> int:
+    def delete_by_component(
+        self, component_substring: str, step_type: str = None
+    ) -> int:
         """
         特定のコンポーネントを含むキャッシュエントリを削除
 
@@ -345,16 +357,20 @@ class CacheManager:
                         # コンポーネント文字列が含まれているかチェック
                         if component_substring in key and self.delete(key):
                             deleted_count += 1
-                            logger.debug(f'Deleted cache entry matching component: {key[:16]}...')
+                            logger.debug(
+                                f"Deleted cache entry matching component: {key[:16]}..."
+                            )
                 except Exception as e:
-                    logger.warning(f'Error checking cache key {key[:16]}...: {e}')
+                    logger.warning(f"Error checking cache key {key[:16]}...: {e}")
                     continue
 
         except Exception as e:
-            logger.error(f'Error during component-based cache deletion: {e}')
+            logger.error(f"Error during component-based cache deletion: {e}")
 
         if deleted_count > 0:
-            logger.info(f'Deleted {deleted_count} cache entries matching component: {component_substring}')
+            logger.info(
+                f"Deleted {deleted_count} cache entries matching component: {component_substring}"
+            )
 
         return deleted_count
 
@@ -373,16 +389,16 @@ class CacheManager:
             if self.set(key, data, step_type):
                 count += 1
 
-        logger.info(f'Warmed cache with {count} entries')
+        logger.info(f"Warmed cache with {count} entries")
         return count
 
     def close(self):
         """キャッシュを閉じる"""
         try:
             self.cache.close()
-            logger.info('Cache closed successfully')
+            logger.info("Cache closed successfully")
         except Exception:
-            logger.exception('Error closing cache')
+            logger.exception("Error closing cache")
 
 
 class CacheManagerSingleton:
