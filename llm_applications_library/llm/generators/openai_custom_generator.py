@@ -111,6 +111,13 @@ class RetryOpenAIGenerator:
                     "stream=True is not supported in responses.create; ignoring stream flag."
                 )
 
+        # responses.create may reject response_format; drop to avoid unexpected keyword errors
+        if "response_format" in responses_params:
+            responses_params.pop("response_format")
+            logger.warning(
+                "response_format is not supported in responses.create; parameter dropped."
+            )
+
         return responses_params
 
     def run(
