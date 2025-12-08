@@ -274,10 +274,13 @@ class OpenAIVisionGenerator:
 
     def run(
         self,
-        base64_images: list[str],
-        mime_types: list[str],
+        base64_images: list[str] | None = None,
+        mime_types: list[str] | None = None,
+        base64_image: str | None = None,
+        mime_type: str | None = None,
         prompt: str = "Please analyze these images in detail.",
         system_prompt: str | None = None,
+        model_config: Any | None = None,
         generation_kwargs: dict[str, Any] | None = None,
     ) -> GeneratorResponse:
         """OpenAI Vision APIを使用して画像またはPDFを解析する（単一または複数画像対応）
@@ -298,6 +301,26 @@ class OpenAIVisionGenerator:
             リストの長さは一致している必要があります
         """
 
+        # Backward compatibility: allow single image arguments
+        base64_images = base64_images or []
+        mime_types = mime_types or []
+        if base64_image:
+            base64_images.append(base64_image)
+        if mime_type:
+            mime_types.append(mime_type)
+
+        # Merge generation parameters from model_config and generation_kwargs
+        merged_generation_kwargs: dict[str, Any] = {}
+        if model_config and hasattr(model_config, "generation_config"):
+            gen_cfg = getattr(model_config, "generation_config")
+            if hasattr(gen_cfg, "model_dump"):
+                merged_generation_kwargs.update(gen_cfg.model_dump(exclude_none=True))
+            elif isinstance(gen_cfg, dict):
+                merged_generation_kwargs.update(gen_cfg)
+
+        if generation_kwargs:
+            merged_generation_kwargs.update(generation_kwargs)
+
         # Validate input lengths
         if len(base64_images) != len(mime_types):
             raise ValueError("Length of base64_images and mime_types must match")
@@ -310,10 +333,9 @@ class OpenAIVisionGenerator:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 
-        # Build content array with multiple images and text prompt
-        content = []
+        # Build content array with text prompt first, then images
+        content = [{"type": "text", "text": prompt}]
 
-        # Add all images
         for base64_image, mime_type in zip(base64_images, mime_types):
             content.append(
                 {
@@ -321,14 +343,6 @@ class OpenAIVisionGenerator:
                     "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
                 }
             )
-
-        # Add text prompt
-        content.append(
-            {
-                "type": "text",
-                "text": prompt,
-            }
-        )
 
         messages.append(
             {
@@ -341,8 +355,10 @@ class OpenAIVisionGenerator:
         retry_config_to_use = self.retry_config
 
         # Validate and set default generation parameters
-        if generation_kwargs:
-            validated_config = OpenAIGenerationConfig.model_validate(generation_kwargs)
+        if merged_generation_kwargs:
+            validated_config = OpenAIGenerationConfig.model_validate(
+                merged_generation_kwargs
+            )
             generation_params = validated_config.model_dump(exclude_none=True)
 
             # For GPT-5 models, convert max_tokens to max_completion_tokens
@@ -376,15 +392,8 @@ class OpenAIVisionGenerator:
             **generation_params,
         )
 
-        # 新しい共通クラスで返り値を統一
-        if response["success"]:
-            return GeneratorResponse.create_success(
-                content=response["content"], usage=response["usage"]
-            )
-        else:
-            return GeneratorResponse.create_error(
-                error=response["error"], usage=response["usage"]
-            )
+        # Keep return shape compatible with existing tests/helpers
+        return {"replies": response, "usage": response.get("usage")}
 
     def run_from_file(
         self,
