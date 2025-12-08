@@ -134,11 +134,11 @@ class TestIntegrationWithGenerators:
         with patch("openai.OpenAI") as mock_openai:
             mock_client = Mock()
             mock_response = Mock()
-            mock_response.choices = [Mock()]
-            mock_response.choices[0].message.content = "Test response"
-            mock_response.usage = Mock()
-            mock_response.usage.model_dump.return_value = {"total_tokens": 10}
-            mock_client.chat.completions.create.return_value = mock_response
+            mock_response.output_text = "Test response"
+            mock_response.usage = {"total_tokens": 10}
+            mock_client.chat = Mock()
+            mock_client.chat.completions = Mock()
+            mock_client.responses.create.return_value = mock_response
             mock_openai.return_value = mock_client
 
             # Valid params should work
@@ -150,6 +150,9 @@ class TestIntegrationWithGenerators:
             result = generator.run("test", generation_kwargs={"invalid_param": "value"})
             assert result.is_success()
             assert result.content is not None
+
+            mock_client.responses.create.assert_called()
+            mock_client.chat.completions.create.assert_not_called()
 
     def test_openai_generator_uses_responses_for_web_search(self):
         """Ensure web_search tool routes through Responses API."""
@@ -165,8 +168,9 @@ class TestIntegrationWithGenerators:
             mock_response.output_text = "Search result"
             mock_response.usage = {"output_tokens": 5}
 
+            mock_client.chat = Mock()
+            mock_client.chat.completions = Mock()
             mock_client.responses.create.return_value = mock_response
-            mock_client.chat.completions.create.return_value = Mock()
             mock_openai.return_value = mock_client
 
             result = generator.run(

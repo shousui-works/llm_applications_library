@@ -61,15 +61,6 @@ class RetryOpenAIGenerator:
             TextGeneratorResponse: 統一されたテキスト生成レスポンス
         """
 
-        def _contains_web_search_tool(tools: list[dict] | None) -> bool:
-            """Detect whether the tools array includes the web_search tool."""
-            if not tools:
-                return False
-            return any(
-                isinstance(tool, dict) and tool.get("type") == "web_search"
-                for tool in tools
-            )
-
         def _normalize_usage(usage_obj: Any) -> dict[str, Any]:
             """Handle both dict and OpenAI object usages."""
             if not usage_obj:
@@ -168,7 +159,6 @@ class RetryOpenAIGenerator:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
-            kwargs = {"model": self.model, "messages": messages}
             config_dict: dict[str, Any] = {}
             if generation_kwargs:
                 # Validate using Pydantic model directly
@@ -188,18 +178,10 @@ class RetryOpenAIGenerator:
                     # Remove max_tokens for GPT-5 models
                     config_dict.pop("max_tokens")
 
-            use_responses_api = _contains_web_search_tool(config_dict.get("tools"))
-
-            if use_responses_api:
-                responses_kwargs = _build_responses_kwargs(messages, config_dict)
-                response = client.responses.create(**responses_kwargs)
-                content = _extract_response_text(response) or ""
-                usage = _normalize_usage(getattr(response, "usage", None))
-            else:
-                kwargs.update(config_dict)
-                response = client.chat.completions.create(**kwargs)
-                content = response.choices[0].message.content
-                usage = _normalize_usage(getattr(response, "usage", None))
+            responses_kwargs = _build_responses_kwargs(messages, config_dict)
+            response = client.responses.create(**responses_kwargs)
+            content = _extract_response_text(response) or ""
+            usage = _normalize_usage(getattr(response, "usage", None))
 
             return content, usage
 
