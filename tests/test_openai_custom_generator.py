@@ -28,13 +28,12 @@ class TestOpenAIVisionGenerator:
 
         # OpenAI レスポンスのモック
         mock_response = Mock()
-        mock_response.choices = [Mock()]
-        mock_response.choices[0].message.content = "Test response"
+        mock_response.output_text = "Test response"
         mock_response.usage.model_dump.return_value = {"total_tokens": 100}
 
         with patch("openai.OpenAI") as mock_openai:
             mock_client = Mock()
-            mock_client.chat.completions.create.return_value = mock_response
+            mock_client.responses.create.return_value = mock_response
             mock_openai.return_value = mock_client
 
             messages = [{"role": "user", "content": "test"}]
@@ -50,7 +49,7 @@ class TestOpenAIVisionGenerator:
 
         with patch("openai.OpenAI") as mock_openai:
             mock_client = Mock()
-            mock_client.chat.completions.create.side_effect = Exception("API Error")
+            mock_client.responses.create.side_effect = Exception("API Error")
             mock_openai.return_value = mock_client
 
             messages = [{"role": "user", "content": "test"}]
@@ -95,16 +94,17 @@ class TestOpenAIVisionGenerator:
 
             # System message
             assert messages[0]["role"] == "system"
-            assert messages[0]["content"] == "Analyze this image"
+            assert messages[0]["content"][0]["type"] == "input_text"
+            assert messages[0]["content"][0]["text"] == "Analyze this image"
 
             # User message with image and text
             assert messages[1]["role"] == "user"
             assert len(messages[1]["content"]) == 2
 
             # 画像部分の確認
-            assert messages[1]["content"][0]["type"] == "image_url"
+            assert messages[1]["content"][0]["type"] == "input_image"
             # テキスト部分の確認
-            assert messages[1]["content"][1]["type"] == "text"
+            assert messages[1]["content"][1]["type"] == "input_text"
             assert (
                 "data:image/png;base64,test_base64_data"
                 in (messages[1]["content"][0]["image_url"]["url"])

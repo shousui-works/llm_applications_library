@@ -16,6 +16,38 @@ from .retry_util import openai_retry
 logger = logging.getLogger(__name__)
 
 
+def _extract_responses_content(response: Any) -> str | None:
+    """Safely extract text content from Responses API response."""
+    try:
+        if hasattr(response, "output_text"):
+            content = response.output_text
+            if isinstance(content, list):
+                return "".join(str(part) for part in content)
+            return content
+
+        if hasattr(response, "output") and response.output:
+            first_output = response.output[0]
+            if hasattr(first_output, "content") and first_output.content:
+                first_content = first_output.content[0]
+                text_value = getattr(first_content, "text", None)
+                if text_value is not None:
+                    return text_value
+    except Exception as e:
+        logger.debug(f"Failed to extract Responses API content: {e}")
+    return None
+
+
+def _extract_usage(usage_obj: Any) -> dict[str, Any]:
+    """Normalize usage information from OpenAI SDK objects."""
+    if not usage_obj:
+        return {}
+    if hasattr(usage_obj, "model_dump"):
+        return usage_obj.model_dump()
+    if isinstance(usage_obj, dict):
+        return usage_obj
+    return {}
+
+
 class RetryOpenAIGenerator:
     """
     Retry機能付きのOpenAIGeneratorコンポーネント
@@ -43,6 +75,44 @@ class RetryOpenAIGenerator:
         self.model = model
         self.retry_config = retry_config or RetryConfig()
 
+    def _build_text_input(self, prompt: str, system_prompt: str | None = None):
+        """Build Responses API input payload for text-only requests."""
+        if system_prompt:
+            return [
+                {
+                    "role": "system",
+                    "content": [{"type": "input_text", "text": system_prompt}],
+                },
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": prompt}],
+                },
+            ]
+        return [{"role": "user", "content": [{"type": "input_text", "text": prompt}]}]
+
+    def _prepare_responses_params(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Convert generation params to Responses API compatible fields."""
+        responses_params = config.copy()
+
+        # Responses API uses max_output_tokens; map other variants to it
+        max_output_tokens = responses_params.pop("max_output_tokens", None)
+        if "max_completion_tokens" in responses_params:
+            max_output_tokens = responses_params.pop("max_completion_tokens")
+        if max_output_tokens is None and "max_tokens" in responses_params:
+            max_output_tokens = responses_params.pop("max_tokens")
+        if max_output_tokens is not None:
+            responses_params["max_output_tokens"] = max_output_tokens
+
+        # Streaming is handled via responses.stream, not via a flag on create
+        if "stream" in responses_params:
+            stream_flag = responses_params.pop("stream")
+            if stream_flag:
+                logger.warning(
+                    "stream=True is not supported in responses.create; ignoring stream flag."
+                )
+
+        return responses_params
+
     def run(
         self,
         prompt: str,
@@ -65,12 +135,9 @@ class RetryOpenAIGenerator:
         def _run_with_retry():
             """retry機能付きのrun実行"""
             client = openai.OpenAI(api_key=self.api_key)
-            messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
-            messages.append({"role": "user", "content": prompt})
+            input_payload = self._build_text_input(prompt, system_prompt)
 
-            kwargs = {"model": self.model, "messages": messages}
+            config_dict: dict[str, Any] = {}
             if generation_kwargs:
                 # Validate using Pydantic model directly
                 validated_config = OpenAIGenerationConfig.model_validate(
@@ -78,23 +145,15 @@ class RetryOpenAIGenerator:
                 )
                 config_dict = validated_config.model_dump(exclude_none=True)
 
-                # Handle max_tokens vs max_completion_tokens compatibility
-                # For GPT-5 models, always convert max_tokens to max_completion_tokens
-                if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
-                    if "max_tokens" in config_dict:
-                        if "max_completion_tokens" not in config_dict:
-                            # Convert max_tokens to max_completion_tokens
-                            config_dict["max_completion_tokens"] = config_dict[
-                                "max_tokens"
-                            ]
-                        # Remove max_tokens for GPT-5 models
-                        config_dict.pop("max_tokens")
+            responses_params = self._prepare_responses_params(config_dict)
+            response = client.responses.create(
+                model=self.model,
+                input=input_payload,
+                **responses_params,
+            )
+            content = _extract_responses_content(response)
+            usage = _extract_usage(response.usage)
 
-                kwargs.update(config_dict)
-
-            response = client.chat.completions.create(**kwargs)
-            content = response.choices[0].message.content
-            usage = response.usage.model_dump() if response.usage else {}
             return content, usage
 
         try:
@@ -104,7 +163,7 @@ class RetryOpenAIGenerator:
                 f"initial_wait={self.retry_config.initial_wait}"
             )
             content, usage = _run_with_retry()
-            return GeneratorResponse.create_success(content=content, usage=usage)
+            return GeneratorResponse.create_success(content=content or "", usage=usage)
         except Exception as e:
             # Validation errors should be raised immediately (not retried)
             if "validation error" in str(e) or "Extra inputs are not permitted" in str(
@@ -136,7 +195,7 @@ class OpenAIVisionGenerator:
         api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ) -> dict[str, Any]:
-        """Direct chat completion with tenacity retry for robust error handling"""
+        """Responses API call with tenacity retry for robust error handling"""
 
         @openai_retry(retry_config)
         def _make_api_call():
@@ -148,29 +207,25 @@ class OpenAIVisionGenerator:
 
             kwargs = {
                 "model": self.model,
-                "messages": messages,
+                "input": messages,
                 "temperature": temperature,
             }
 
-            if response_format:
-                kwargs["response_format"] = response_format
-
-            # Handle token limits - prefer max_completion_tokens if provided
+            # Responses API uses max_output_tokens
+            token_limit = None
             if max_completion_tokens:
-                kwargs["max_completion_tokens"] = max_completion_tokens
+                token_limit = max_completion_tokens
             elif max_tokens:
-                # Use max_completion_tokens for GPT-5 models, max_tokens for others
-                if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
-                    kwargs["max_completion_tokens"] = max_tokens
-                else:
-                    kwargs["max_tokens"] = max_tokens
+                token_limit = max_tokens
+            if token_limit is not None:
+                kwargs["max_output_tokens"] = token_limit
 
-            response = client.chat.completions.create(**kwargs)
+            response = client.responses.create(**kwargs)
 
             return {
                 "success": True,
-                "content": response.choices[0].message.content,
-                "usage": response.usage.model_dump() if response.usage else None,
+                "content": _extract_responses_content(response),
+                "usage": _extract_usage(response.usage),
                 "error": None,
             }
 
@@ -220,7 +275,12 @@ class OpenAIVisionGenerator:
         # Build messages with optional system prompt
         messages = []
         if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
+            messages.append(
+                {
+                    "role": "system",
+                    "content": [{"type": "input_text", "text": system_prompt}],
+                }
+            )
 
         # Build content array with multiple images and text prompt
         content = []
@@ -229,7 +289,7 @@ class OpenAIVisionGenerator:
         for base64_image, mime_type in zip(base64_images, mime_types):
             content.append(
                 {
-                    "type": "image_url",
+                    "type": "input_image",
                     "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
                 }
             )
@@ -237,7 +297,7 @@ class OpenAIVisionGenerator:
         # Add text prompt
         content.append(
             {
-                "type": "text",
+                "type": "input_text",
                 "text": prompt,
             }
         )
@@ -256,6 +316,12 @@ class OpenAIVisionGenerator:
         if generation_kwargs:
             validated_config = OpenAIGenerationConfig.model_validate(generation_kwargs)
             generation_params = validated_config.model_dump(exclude_none=True)
+
+            # Map Responses API token limit to chat completion equivalent
+            if "max_output_tokens" in generation_params:
+                generation_params["max_tokens"] = generation_params.pop(
+                    "max_output_tokens"
+                )
 
             # For GPT-5 models, convert max_tokens to max_completion_tokens
             if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():

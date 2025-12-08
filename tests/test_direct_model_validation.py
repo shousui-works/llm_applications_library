@@ -93,6 +93,17 @@ class TestDirectModelValidation:
         assert isinstance(result["temperature"], float)
         assert isinstance(result["max_tokens"], int)
 
+    def test_openai_max_output_tokens(self):
+        """Test Responses API specific parameter is preserved."""
+        kwargs = {
+            "max_output_tokens": 256,
+        }
+
+        config = OpenAIGenerationConfig.model_validate(kwargs)
+        result = config.model_dump(exclude_none=True)
+
+        assert result["max_output_tokens"] == 256
+
     def test_exclude_none_filtering(self):
         """Test that None values are properly excluded."""
         kwargs = {"temperature": 0.7}  # Only one field set
@@ -134,11 +145,10 @@ class TestIntegrationWithGenerators:
         with patch("openai.OpenAI") as mock_openai:
             mock_client = Mock()
             mock_response = Mock()
-            mock_response.choices = [Mock()]
-            mock_response.choices[0].message.content = "Test response"
+            mock_response.output_text = "Test response"
             mock_response.usage = Mock()
             mock_response.usage.model_dump.return_value = {"total_tokens": 10}
-            mock_client.chat.completions.create.return_value = mock_response
+            mock_client.responses.create.return_value = mock_response
             mock_openai.return_value = mock_client
 
             # Valid params should work
@@ -150,6 +160,36 @@ class TestIntegrationWithGenerators:
             result = generator.run("test", generation_kwargs={"invalid_param": "value"})
             assert result.is_success()
             assert result.content is not None
+
+    def test_openai_generator_uses_responses_api(self):
+        """Ensure text generation uses Responses API."""
+        from llm_applications_library.llm.generators.openai_custom_generator import (
+            RetryOpenAIGenerator,
+        )
+
+        generator = RetryOpenAIGenerator(api_key="test-key")
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_client.responses = Mock()
+
+            mock_response = Mock()
+            mock_response.output_text = "Search result"
+            mock_response.usage = Mock()
+            mock_response.usage.model_dump.return_value = {"total_tokens": 5}
+            mock_client.responses.create = Mock(return_value=mock_response)
+
+            mock_openai.return_value = mock_client
+
+            result = generator.run(
+                "search this",
+                generation_kwargs={"tools": [{"type": "web_search"}]},
+            )
+
+            mock_client.responses.create.assert_called_once()
+            assert result.is_success()
+            assert result.content == "Search result"
+            assert result.usage.total_tokens == 5
 
     def test_claude_generator_direct_validation(self):
         """Test direct validation in Claude generator context."""
