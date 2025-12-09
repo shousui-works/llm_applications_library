@@ -89,7 +89,7 @@ retry_config = RetryConfig(
 # GPT設定の作成
 gpt_config = GPTConfig(
     model="gpt-4o",
-    max_tokens=1000,
+    max_output_tokens=1000,
     temperature=0.7
 )
 ```

@@ -11,7 +11,8 @@ def example_vision_pipeline():
 
     # Create vision pipeline for GPT-4o
     pipeline = create_vision_pipeline(
-        model="gpt-4o", generation_kwargs={"temperature": 0.7, "max_tokens": 1000}
+        model="gpt-4o",
+        generation_kwargs={"temperature": 0.7, "max_output_tokens": 1000},
     )
 
     # Example base64 image (1x1 red pixel PNG)
