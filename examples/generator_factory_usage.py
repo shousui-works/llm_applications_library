@@ -128,7 +128,7 @@ def main():
         "Write a short poem",
         generation_kwargs={
             "temperature": 0.8,      # More creative
-            "max_tokens": 100        # Limit length
+            "max_output_tokens": 100        # Limit length
         }
     )
 
@@ -139,19 +139,10 @@ def main():
         system_prompt="You are a computer science professor",
         generation_kwargs={
             "temperature": 0.2,      # More focused
-            "max_tokens": 300
+            "max_output_tokens": 300
         }
     )
 
-    # OpenAI with response format (JSON mode)
-    openai_gen = create_generator("gpt-4o", "text")
-    result = openai_gen.run(
-        "Generate a user profile",
-        generation_kwargs={
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"}
-        }
-    )
     """)
 
     print()

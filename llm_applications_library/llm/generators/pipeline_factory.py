@@ -121,7 +121,7 @@ def create_pipeline(
             model="gpt-4o",
             user_prompt_template="Answer this question: {question}",
             required_variables=["question"],
-            generation_kwargs={"temperature": 0.7, "max_tokens": 100}
+            generation_kwargs={"temperature": 0.7, "max_output_tokens": 100}
         )
 
         result = pipeline.run({"PromptBuilder": {"question": "What is AI?"}})
@@ -206,7 +206,7 @@ def create_vision_pipeline(
             model="gpt-4o",
             user_prompt_template="この画像について{question}を答えてください",
             required_variables=["question"],
-            generation_kwargs={"temperature": 0.7, "max_tokens": 100}
+            generation_kwargs={"temperature": 0.7, "max_output_tokens": 100}
         )
 
         result = pipeline.run({

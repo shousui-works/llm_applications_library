@@ -16,7 +16,7 @@ class TestDirectModelValidation:
         """Test OpenAI model validation with valid parameters."""
         valid_kwargs = {
             "temperature": 0.7,
-            "max_tokens": 1000,
+            "max_output_tokens": 1000,
             "top_p": 0.9,
             "frequency_penalty": 0.1,
         }
@@ -25,7 +25,7 @@ class TestDirectModelValidation:
         result = config.model_dump(exclude_none=True)
 
         assert result["temperature"] == 0.7
-        assert result["max_tokens"] == 1000
+        assert result["max_output_tokens"] == 1000
         assert result["top_p"] == 0.9
         assert result["frequency_penalty"] == 0.1
 
@@ -82,16 +82,16 @@ class TestDirectModelValidation:
         """Test automatic type coercion."""
         kwargs = {
             "temperature": "0.7",  # string -> float
-            "max_tokens": "1000",  # string -> int
+            "max_output_tokens": "1000",  # string -> int
         }
 
         config = OpenAIGenerationConfig.model_validate(kwargs)
         result = config.model_dump(exclude_none=True)
 
         assert result["temperature"] == 0.7
-        assert result["max_tokens"] == 1000
+        assert result["max_output_tokens"] == 1000
         assert isinstance(result["temperature"], float)
-        assert isinstance(result["max_tokens"], int)
+        assert isinstance(result["max_output_tokens"], int)
 
     def test_openai_max_output_tokens(self):
         """Test Responses API specific parameter is preserved."""
@@ -112,13 +112,22 @@ class TestDirectModelValidation:
         result = config.model_dump(exclude_none=True)
 
         assert "temperature" in result
-        assert "max_tokens" not in result  # None value excluded
+        assert "max_output_tokens" not in result  # None value excluded
         assert "top_p" not in result  # None value excluded
+
+    def test_legacy_max_tokens_is_mapped(self):
+        """Legacy max_tokens should map to max_output_tokens."""
+        kwargs = {"max_tokens": 500}
+
+        config = OpenAIGenerationConfig.model_validate(kwargs)
+        result = config.model_dump(exclude_none=True)
+
+        assert "max_tokens" not in result
+        assert result["max_output_tokens"] == 500
 
     def test_complex_types(self):
         """Test complex types like dicts and lists."""
         kwargs = {
-            "response_format": {"type": "json_object"},
             "stop": ["END", "STOP"],
             "tools": [{"type": "function", "function": {"name": "test"}}],
         }
@@ -126,7 +135,6 @@ class TestDirectModelValidation:
         config = OpenAIGenerationConfig.model_validate(kwargs)
         result = config.model_dump(exclude_none=True)
 
-        assert result["response_format"]["type"] == "json_object"
         assert result["stop"] == ["END", "STOP"]
         assert len(result["tools"]) == 1
 

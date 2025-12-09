@@ -94,7 +94,7 @@ class RetryOpenAIGenerator:
         """Convert generation params to Responses API compatible fields."""
         responses_params = config.copy()
 
-        # Responses API uses max_output_tokens; map other variants to it
+        # Responses API uses max_output_tokens; map legacy aliases to it
         max_output_tokens = responses_params.pop("max_output_tokens", None)
         if "max_completion_tokens" in responses_params:
             max_output_tokens = responses_params.pop("max_completion_tokens")
@@ -125,7 +125,7 @@ class RetryOpenAIGenerator:
         Args:
             prompt: テキスト生成用のプロンプト
             system_prompt: システムプロンプト（実行時設定）
-            generation_kwargs: 生成用の追加パラメータ
+            generation_kwargs: 生成用の追加パラメータ（temperature, max_output_tokens等）
 
         Returns:
             TextGeneratorResponse: 統一されたテキスト生成レスポンス
@@ -189,9 +189,8 @@ class OpenAIVisionGenerator:
         self,
         messages: list[dict],
         temperature: float = 0.1,
-        response_format: dict[str, str] | None = None,
-        max_tokens: int | None = None,
         max_completion_tokens: int | None = None,
+        max_output_tokens: int | None = None,
         api_key: str | None = None,
         retry_config: RetryConfig | None = None,
     ) -> dict[str, Any]:
@@ -212,11 +211,11 @@ class OpenAIVisionGenerator:
             }
 
             # Responses API uses max_output_tokens
-            token_limit = None
-            if max_completion_tokens:
-                token_limit = max_completion_tokens
-            elif max_tokens:
-                token_limit = max_tokens
+            token_limit = (
+                max_output_tokens
+                if max_output_tokens is not None
+                else max_completion_tokens
+            )
             if token_limit is not None:
                 kwargs["max_output_tokens"] = token_limit
 
@@ -254,7 +253,7 @@ class OpenAIVisionGenerator:
             mime_types (list[str]): 画像のMIMEタイプのリスト
             prompt (str): 画像に対する分析指示（デフォルト: "Please analyze these images in detail."）
             system_prompt (str, optional): システムプロンプト
-            generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_tokens等）
+            generation_kwargs (dict, optional): 生成用パラメータ（temperature, max_output_tokens等）
 
         Returns:
             GeneratorResponse: 統一されたVision分析レスポンス
@@ -317,20 +316,6 @@ class OpenAIVisionGenerator:
             validated_config = OpenAIGenerationConfig.model_validate(generation_kwargs)
             generation_params = validated_config.model_dump(exclude_none=True)
 
-            # Map Responses API token limit to chat completion equivalent
-            if "max_output_tokens" in generation_params:
-                generation_params["max_tokens"] = generation_params.pop(
-                    "max_output_tokens"
-                )
-
-            # For GPT-5 models, convert max_tokens to max_completion_tokens
-            if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
-                if "max_tokens" in generation_params:
-                    if "max_completion_tokens" not in generation_params:
-                        generation_params["max_completion_tokens"] = generation_params[
-                            "max_tokens"
-                        ]
-                    generation_params.pop("max_tokens")
         else:
             generation_params = {}
 
@@ -338,14 +323,10 @@ class OpenAIVisionGenerator:
         if "temperature" not in generation_params:
             generation_params["temperature"] = 0.1
         if (
-            "max_tokens" not in generation_params
+            "max_output_tokens" not in generation_params
             and "max_completion_tokens" not in generation_params
         ):
-            # Use max_completion_tokens for GPT-5 models, max_tokens for others
-            if self.model.startswith("gpt-5") or "gpt-5" in self.model.lower():
-                generation_params["max_completion_tokens"] = 4096
-            else:
-                generation_params["max_tokens"] = 4096
+            generation_params["max_output_tokens"] = 4096
 
         response = self._chat_completion(
             messages=messages,
@@ -377,7 +358,7 @@ class OpenAIVisionGenerator:
             image_paths: 画像ファイルのパスのリスト
             prompt: 画像に対する分析指示（デフォルト: "Please analyze these images in detail."）
             system_prompt: システムプロンプト（オプション）
-            generation_kwargs: 生成用パラメータ（temperature, max_tokens等）
+            generation_kwargs: 生成用パラメータ（temperature, max_output_tokens等）
 
         Returns:
             GeneratorResponse: 統一されたVision分析レスポンス

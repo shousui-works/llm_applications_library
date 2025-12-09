@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 try:
     from pydantic import BaseSettings
@@ -87,13 +87,11 @@ class OpenAIGenerationConfig(BaseModel):
     """OpenAI API用の生成設定（全ての有効なパラメーターを含む）"""
 
     temperature: float | None = None
-    max_tokens: int | None = None
     max_output_tokens: int | None = None  # Responses API用の新パラメータ
     max_completion_tokens: int | None = None  # GPT-5用の新パラメータ
     top_p: float | None = None
     frequency_penalty: float | None = None
     presence_penalty: float | None = None
-    response_format: dict | None = None
     seed: int | None = None
     stop: str | list[str] | None = None
     stream: bool | None = None
@@ -104,6 +102,16 @@ class OpenAIGenerationConfig(BaseModel):
     tools: list[dict] | None = None
 
     model_config = {"extra": "ignore"}  # 未定義フィールドを無視
+
+    @model_validator(mode="before")
+    @classmethod
+    def _alias_max_tokens(cls, data):
+        """Support legacy max_tokens by remapping to max_output_tokens."""
+        if isinstance(data, dict):
+            if "max_tokens" in data and "max_output_tokens" not in data:
+                data = data.copy()
+                data["max_output_tokens"] = data.pop("max_tokens")
+        return data
 
 
 class ClaudeGenerationConfig(BaseModel):
