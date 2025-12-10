@@ -7,7 +7,7 @@ from haystack import Pipeline, component
 from haystack.components.builders import PromptBuilder
 
 from .factory import GeneratorFactory
-from .schema import RetryConfig
+from .schema import Model, RetryConfig
 from .converter import ProviderSelectableInstructGenerator
 
 
@@ -20,18 +20,23 @@ class PipelineCreationError(Exception):
     pass
 
 
+def _model_name(model: Model | str) -> str:
+    """Resolve Model enum to plain model name."""
+    return model.value if isinstance(model, Model) else str(model)
+
+
 @component
 class HaystackGeneratorWrapper:
     """Wrapper component to integrate GeneratorFactory output with Haystack pipeline."""
 
     def __init__(
         self,
-        model: str,
+        model: Model,
         generation_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
     ):
         self.generator = GeneratorFactory.create_text_generator(
-            model=model, retry_config=retry_config
+            model=_model_name(model), retry_config=retry_config
         )
         self.generation_kwargs = generation_kwargs or {}
 
@@ -58,12 +63,12 @@ class HaystackVisionGeneratorWrapper:
 
     def __init__(
         self,
-        model: str,
+        model: Model,
         generation_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
     ):
         self.generator = GeneratorFactory.create_vision_generator(
-            model=model, retry_config=retry_config
+            model=_model_name(model), retry_config=retry_config
         )
         self.generation_kwargs = generation_kwargs or {}
 
@@ -93,7 +98,7 @@ class HaystackVisionGeneratorWrapper:
 
 
 def create_pipeline(
-    model: str,
+    model: Model,
     user_prompt_template: str,
     required_variables: list[str],
     generation_kwargs: dict[str, Any] | None = None,
@@ -103,7 +108,7 @@ def create_pipeline(
     Create a pipeline using model name auto-detection with GeneratorFactory.
 
     Args:
-        model: Model name (e.g., "gpt-4o", "claude-sonnet-4-5-20250929")
+        model: Model enum (e.g., Model.GPT_4O)
         user_prompt_template: Template string for the prompt
         required_variables: List of required template variables
         generation_kwargs: Optional generation parameters
@@ -118,7 +123,7 @@ def create_pipeline(
     Example:
         ```python
         pipeline = create_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="Answer this question: {question}",
             required_variables=["question"],
             generation_kwargs={"temperature": 0.7, "max_output_tokens": 100}
@@ -148,7 +153,9 @@ def create_pipeline(
 
         # Add generator wrapper that uses GeneratorFactory
         generator_wrapper = HaystackGeneratorWrapper(
-            model=model, generation_kwargs=generation_kwargs, retry_config=retry_config
+            model=_model_name(model),
+            generation_kwargs=generation_kwargs,
+            retry_config=retry_config,
         )
         pipeline.add_component(name="Generator", instance=generator_wrapper)
 
@@ -178,7 +185,7 @@ def create_pipeline(
 
 
 def create_vision_pipeline(
-    model: str,
+    model: Model,
     user_prompt_template: str,
     required_variables: list[str],
     generation_kwargs: dict[str, Any] | None = None,
@@ -188,7 +195,7 @@ def create_vision_pipeline(
     Create a vision pipeline using model name auto-detection with GeneratorFactory.
 
     Args:
-        model: Model name (e.g., "gpt-4o", "claude-sonnet-4-5-20250929")
+        model: Model enum (e.g., Model.GPT_4O)
         user_prompt_template: Template string for the vision prompt
         required_variables: List of required template variables
         generation_kwargs: Optional generation parameters
@@ -203,7 +210,7 @@ def create_vision_pipeline(
     Example:
         ```python
         pipeline = create_vision_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="この画像について{question}を答えてください",
             required_variables=["question"],
             generation_kwargs={"temperature": 0.7, "max_output_tokens": 100}
@@ -239,7 +246,9 @@ def create_vision_pipeline(
 
         # Add vision generator wrapper that uses GeneratorFactory
         vision_generator_wrapper = HaystackVisionGeneratorWrapper(
-            model=model, generation_kwargs=generation_kwargs, retry_config=retry_config
+            model=_model_name(model),
+            generation_kwargs=generation_kwargs,
+            retry_config=retry_config,
         )
         pipeline.add_component(
             name="VisionGenerator", instance=vision_generator_wrapper
