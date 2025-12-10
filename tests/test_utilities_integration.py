@@ -66,6 +66,7 @@ class TestUtilitiesModuleImports:
             "count_tokens_for_messages",
             "split_text_by_tokens",
             "estimate_prompt_tokens",
+            "calculate_available_tokens",
             # PDF utilities
             "extract_pdf_text",
             "is_pdf_text_based",
