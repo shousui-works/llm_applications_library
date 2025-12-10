@@ -38,16 +38,6 @@ DEFAULT_RESPONSE_TOKENS = 4000
 MIN_AVAILABLE_TOKENS = 500
 
 
-def _resolve_model_name(model: Model | str) -> str:
-    """Return the canonical model string from Model enum or raw string."""
-    if isinstance(model, Model):
-        return model.value
-    try:
-        return Model(model).value
-    except Exception:
-        return str(model)
-
-
 def _coerce_response_tokens(generation_config: Any | None) -> int:
     """Extract response token budget from a generation config-like object."""
     if not generation_config:
@@ -68,9 +58,9 @@ def _coerce_response_tokens(generation_config: Any | None) -> int:
 def calculate_available_tokens(
     prompt_template: str,
     variables: dict[str, str],
-    model: Model | str,
+    model: Model,
     generation_config: Any | None = None,
-    context_windows: dict[Model | str, int] | None = None,
+    context_windows: dict[Model, int] | None = None,
 ) -> int:
     """
     推定可能な available tokens を計算する共通ユーティリティ。
@@ -78,17 +68,15 @@ def calculate_available_tokens(
     Args:
         prompt_template: プレースホルダーを含むプロンプトテンプレート
         variables: テンプレートに展開する変数
-        model: 使用モデル名（Model または文字列）
+        model: 使用モデル名（Model）
         generation_config: max_output_tokens / max_completion_tokens を含む設定
         context_windows: 追加・上書き用のコンテキストウィンドウ定義
 
     Returns:
         additional_information などユーザー入力に利用可能なトークン数
     """
-    model_name = _resolve_model_name(model)
-    normalized_windows = {
-        _resolve_model_name(k): v for k, v in (context_windows or {}).items()
-    }
+    model_name = model.value
+    normalized_windows = {k.value: v for k, v in (context_windows or {}).items()}
     model_windows = {**MODEL_CONTEXT_WINDOWS, **normalized_windows}
 
     try:
