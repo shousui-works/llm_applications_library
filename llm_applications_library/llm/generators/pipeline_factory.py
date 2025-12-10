@@ -21,7 +21,7 @@ class PipelineCreationError(Exception):
 
 
 def _model_name(model: Model | str) -> str:
-    """Resolve Model enum or string to plain model name."""
+    """Resolve Model enum to plain model name."""
     return model.value if isinstance(model, Model) else str(model)
 
 
@@ -31,7 +31,7 @@ class HaystackGeneratorWrapper:
 
     def __init__(
         self,
-        model: Model | str,
+        model: Model,
         generation_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
     ):
@@ -63,7 +63,7 @@ class HaystackVisionGeneratorWrapper:
 
     def __init__(
         self,
-        model: Model | str,
+        model: Model,
         generation_kwargs: dict[str, Any] | None = None,
         retry_config: RetryConfig | None = None,
     ):
@@ -98,7 +98,7 @@ class HaystackVisionGeneratorWrapper:
 
 
 def create_pipeline(
-    model: Model | str,
+    model: Model,
     user_prompt_template: str,
     required_variables: list[str],
     generation_kwargs: dict[str, Any] | None = None,
@@ -108,7 +108,7 @@ def create_pipeline(
     Create a pipeline using model name auto-detection with GeneratorFactory.
 
     Args:
-        model: Model name or Model enum (e.g., Model.GPT_4O)
+        model: Model enum (e.g., Model.GPT_4O)
         user_prompt_template: Template string for the prompt
         required_variables: List of required template variables
         generation_kwargs: Optional generation parameters
@@ -123,7 +123,7 @@ def create_pipeline(
     Example:
         ```python
         pipeline = create_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="Answer this question: {question}",
             required_variables=["question"],
             generation_kwargs={"temperature": 0.7, "max_output_tokens": 100}
@@ -185,7 +185,7 @@ def create_pipeline(
 
 
 def create_vision_pipeline(
-    model: Model | str,
+    model: Model,
     user_prompt_template: str,
     required_variables: list[str],
     generation_kwargs: dict[str, Any] | None = None,
@@ -195,7 +195,7 @@ def create_vision_pipeline(
     Create a vision pipeline using model name auto-detection with GeneratorFactory.
 
     Args:
-        model: Model name or Model enum (e.g., Model.GPT_4O)
+        model: Model enum (e.g., Model.GPT_4O)
         user_prompt_template: Template string for the vision prompt
         required_variables: List of required template variables
         generation_kwargs: Optional generation parameters
@@ -210,7 +210,7 @@ def create_vision_pipeline(
     Example:
         ```python
         pipeline = create_vision_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="この画像について{question}を答えてください",
             required_variables=["question"],
             generation_kwargs={"temperature": 0.7, "max_output_tokens": 100}

@@ -10,7 +10,7 @@ from llm_applications_library.llm.generators.pipeline_factory import (
     HaystackGeneratorWrapper,
     HaystackVisionGeneratorWrapper,
 )
-from llm_applications_library.llm.generators.schema import RetryConfig
+from llm_applications_library.llm.generators.schema import Model, RetryConfig
 
 
 class TestHaystackGeneratorWrapper:
@@ -26,13 +26,13 @@ class TestHaystackGeneratorWrapper:
 
         retry_config = RetryConfig()
         wrapper = HaystackGeneratorWrapper(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             generation_kwargs={"temperature": 0.7},
             retry_config=retry_config,
         )
 
         mock_create_text.assert_called_once_with(
-            model="gpt-4o", retry_config=retry_config
+            model=Model.GPT_4O.value, retry_config=retry_config
         )
         assert wrapper.generator == mock_generator
         assert wrapper.generation_kwargs == {"temperature": 0.7}
@@ -48,7 +48,7 @@ class TestHaystackGeneratorWrapper:
         mock_generator.run.return_value = mock_response
         mock_create_text.return_value = mock_generator
 
-        wrapper = HaystackGeneratorWrapper(model="gpt-4o")
+        wrapper = HaystackGeneratorWrapper(model=Model.GPT_4O)
         result = wrapper.run("Test prompt")
 
         mock_generator.run.assert_called_once_with(
@@ -70,7 +70,7 @@ class TestHaystackGeneratorWrapper:
         mock_generator.run.return_value = mock_response
         mock_create_text.return_value = mock_generator
 
-        wrapper = HaystackGeneratorWrapper(model="gpt-4o")
+        wrapper = HaystackGeneratorWrapper(model=Model.GPT_4O)
         result = wrapper.run("Test prompt")
 
         # Check that result includes both replies and usage
@@ -92,13 +92,13 @@ class TestHaystackVisionGeneratorWrapper:
 
         retry_config = RetryConfig()
         wrapper = HaystackVisionGeneratorWrapper(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             generation_kwargs={"temperature": 0.7},
             retry_config=retry_config,
         )
 
         mock_create_vision.assert_called_once_with(
-            model="gpt-4o", retry_config=retry_config
+            model=Model.GPT_4O.value, retry_config=retry_config
         )
         assert wrapper.generator == mock_generator
         assert wrapper.generation_kwargs == {"temperature": 0.7}
@@ -114,7 +114,7 @@ class TestHaystackVisionGeneratorWrapper:
         mock_generator.run.return_value = mock_response
         mock_create_vision.return_value = mock_generator
 
-        wrapper = HaystackVisionGeneratorWrapper(model="gpt-4o")
+        wrapper = HaystackVisionGeneratorWrapper(model=Model.GPT_4O)
         result = wrapper.run(
             base64_images=["fake_base64"],
             mime_types=["image/jpeg"],
@@ -143,7 +143,7 @@ class TestHaystackVisionGeneratorWrapper:
         mock_generator.run.return_value = mock_response
         mock_create_vision.return_value = mock_generator
 
-        wrapper = HaystackVisionGeneratorWrapper(model="gpt-4o")
+        wrapper = HaystackVisionGeneratorWrapper(model=Model.GPT_4O)
         result = wrapper.run(base64_images=["fake_base64"], mime_types=["image/jpeg"])
 
         mock_generator.run.assert_called_once_with(
@@ -177,7 +177,7 @@ class TestCreatePipeline:
         mock_pipeline.return_value = mock_pipeline_instance
 
         result = create_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="Answer: {question}",
             required_variables=["question"],
             generation_kwargs={"temperature": 0.7},
@@ -197,7 +197,7 @@ class TestCreatePipeline:
 
             with pytest.raises(PipelineCreationError, match="Pipeline creation failed"):
                 create_pipeline(
-                    model="gpt-4o",
+                    model=Model.GPT_4O,
                     user_prompt_template="Answer: {question}",
                     required_variables=["question"],
                 )
@@ -221,7 +221,7 @@ class TestCreateVisionPipeline:
         mock_pipeline.return_value = mock_pipeline_instance
 
         result = create_vision_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="この画像について{question}を答えてください",
             required_variables=["question"],
             generation_kwargs={"temperature": 0.7},
@@ -235,7 +235,7 @@ class TestCreateVisionPipeline:
         # Verify wrapper was called with correct parameters
         mock_wrapper.assert_called_once()
         args, kwargs = mock_wrapper.call_args
-        assert kwargs["model"] == "gpt-4o"
+        assert kwargs["model"] == Model.GPT_4O
         assert kwargs["generation_kwargs"] == {"temperature": 0.7}
 
     @patch("llm_applications_library.llm.generators.pipeline_factory.Pipeline")
@@ -251,7 +251,7 @@ class TestCreateVisionPipeline:
 
         retry_config = RetryConfig(max_attempts=5)
         result = create_vision_pipeline(
-            model="claude-3-haiku",
+            model=Model.CLAUDE_3_HAIKU,
             user_prompt_template="Analyze this image: {description}",
             required_variables=["description"],
             retry_config=retry_config,
@@ -270,7 +270,7 @@ class TestCreateVisionPipeline:
                 PipelineCreationError, match="Vision pipeline creation failed"
             ):
                 create_vision_pipeline(
-                    model="gpt-4o",
+                    model=Model.GPT_4O,
                     user_prompt_template="Test template",
                     required_variables=[],
                 )
@@ -282,7 +282,7 @@ class TestPipelineIntegration:
     def test_text_pipeline_components_structure(self):
         """Test that text pipeline has correct component structure."""
         pipeline = create_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="Answer: {question}",
             required_variables=["question"],
         )
@@ -309,7 +309,7 @@ class TestPipelineIntegration:
     def test_vision_pipeline_components_structure(self):
         """Test that vision pipeline has correct component structure."""
         pipeline = create_vision_pipeline(
-            model="gpt-4o",
+            model=Model.GPT_4O,
             user_prompt_template="Describe this image: {prompt}",
             required_variables=["prompt"],
         )
