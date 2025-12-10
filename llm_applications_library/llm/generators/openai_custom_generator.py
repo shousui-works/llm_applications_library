@@ -289,7 +289,8 @@ class OpenAIVisionGenerator:
             content.append(
                 {
                     "type": "input_image",
-                    "image_url": {"url": f"data:{mime_type};base64,{base64_image}"},
+                    # Responses API expects a string URL for images
+                    "image_url": f"data:{mime_type};base64,{base64_image}",
                 }
             )
 
