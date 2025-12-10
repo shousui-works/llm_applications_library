@@ -103,11 +103,12 @@ class TestOpenAIVisionGenerator:
 
             # 画像部分の確認
             assert messages[1]["content"][0]["type"] == "input_image"
+            assert isinstance(messages[1]["content"][0]["image_url"], str)
             # テキスト部分の確認
             assert messages[1]["content"][1]["type"] == "input_text"
             assert (
                 "data:image/png;base64,test_base64_data"
-                in (messages[1]["content"][0]["image_url"]["url"])
+                in messages[1]["content"][0]["image_url"]
             )
 
     def test_component_functionality(self):
