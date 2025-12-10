@@ -16,6 +16,10 @@ MODEL_CONTEXT_WINDOWS = {
     "gpt-4.1": 128_000,
     "gpt-4.1-mini": 128_000,
     "gpt-4.1-nano": 8_000,
+    "gpt-5": 200_000,
+    "gpt-5-mini": 200_000,
+    "gpt-5.1": 200_000,
+    "gpt-5.1-mini": 200_000,
     "gpt-3.5-turbo": 16_000,
     "claude-3-5-sonnet": 200_000,
     "claude-3-5-haiku": 200_000,
@@ -24,6 +28,8 @@ MODEL_CONTEXT_WINDOWS = {
     "claude-4-sonnet": 200_000,
     "claude-4-opus": 200_000,
     "claude-4-haiku": 200_000,
+    "claude-4.5-sonnet": 200_000,
+    "claude-4.5-haiku": 200_000,
 }
 
 DEFAULT_CONTEXT_WINDOW = 8192
