@@ -87,6 +87,30 @@ class Model(StrEnum):
     CLAUDE_3_SONNET = CLAUDE_3_7_SONNET  # Redirect to 3.7 version
 
 
+# Known context window sizes (tokens)
+MODEL_CONTEXT_WINDOWS: dict[str, int] = {
+    Model.GPT_4O.value: 128_000,
+    Model.GPT_4O_MINI.value: 128_000,
+    Model.GPT_4_1.value: 128_000,
+    Model.GPT_4_1_MINI.value: 128_000,
+    Model.GPT_4_1_NANO.value: 8_000,
+    Model.GPT_5.value: 200_000,
+    Model.GPT_5_MINI.value: 200_000,
+    Model.GPT_5_1.value: 200_000,
+    Model.GPT_5_1_MINI.value: 200_000,
+    Model.GPT_3_5_TURBO.value: 16_000,
+    Model.CLAUDE_SONNET_4_5.value: 200_000,
+    Model.CLAUDE_OPUS_4_1.value: 200_000,
+    Model.CLAUDE_OPUS_4.value: 200_000,
+    Model.CLAUDE_SONNET_4.value: 200_000,
+    Model.CLAUDE_3_7_SONNET.value: 200_000,
+    Model.CLAUDE_3_5_SONNET.value: 200_000,
+    Model.CLAUDE_3_5_HAIKU.value: 200_000,
+    Model.CLAUDE_3_OPUS.value: 200_000,
+    Model.CLAUDE_3_HAIKU.value: 200_000,
+}
+
+
 class OpenAIGenerationConfig(BaseModel):
     """OpenAI API用の生成設定（全ての有効なパラメーターを含む）"""
 

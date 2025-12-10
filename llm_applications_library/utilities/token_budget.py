@@ -5,33 +5,13 @@ Token budget utilities for estimating how many tokens are left for user content.
 import logging
 from typing import Any
 
-from llm_applications_library.llm.generators.schema import Model
+from llm_applications_library.llm.generators.schema import (
+    MODEL_CONTEXT_WINDOWS,
+    Model,
+)
 from .token_utils import estimate_prompt_tokens
 
 logger = logging.getLogger(__name__)
-
-# Known context window sizes (tokens)
-MODEL_CONTEXT_WINDOWS = {
-    Model.GPT_4O.value: 128_000,
-    Model.GPT_4O_MINI.value: 128_000,
-    Model.GPT_4_1.value: 128_000,
-    Model.GPT_4_1_MINI.value: 128_000,
-    Model.GPT_4_1_NANO.value: 8_000,
-    Model.GPT_5.value: 200_000,
-    Model.GPT_5_MINI.value: 200_000,
-    Model.GPT_5_1.value: 200_000,
-    Model.GPT_5_1_MINI.value: 200_000,
-    Model.GPT_3_5_TURBO.value: 16_000,
-    Model.CLAUDE_SONNET_4_5.value: 200_000,
-    Model.CLAUDE_OPUS_4_1.value: 200_000,
-    Model.CLAUDE_OPUS_4.value: 200_000,
-    Model.CLAUDE_SONNET_4.value: 200_000,
-    Model.CLAUDE_3_7_SONNET.value: 200_000,
-    Model.CLAUDE_3_5_SONNET.value: 200_000,
-    Model.CLAUDE_3_5_HAIKU.value: 200_000,
-    Model.CLAUDE_3_OPUS.value: 200_000,
-    Model.CLAUDE_3_HAIKU.value: 200_000,
-}
 
 DEFAULT_CONTEXT_WINDOW = 8192
 DEFAULT_RESPONSE_TOKENS = 4000
