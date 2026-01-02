@@ -68,6 +68,8 @@ class Model(StrEnum):
     GPT_5_MINI = "gpt-5-mini"
     GPT_5_1 = "gpt-5.1"
     GPT_5_1_MINI = "gpt-5.1-mini"
+    GPT_5_2 = "gpt-5.2"
+    GPT_5_2_MINI = "gpt-5.2-mini"
     GPT_4 = "gpt-4"
     GPT_4_TURBO = "gpt-4-turbo"
     GPT_3_5_TURBO = "gpt-3.5-turbo"
@@ -98,6 +100,8 @@ MODEL_CONTEXT_WINDOWS: dict[str, int] = {
     Model.GPT_5_MINI.value: 200_000,
     Model.GPT_5_1.value: 200_000,
     Model.GPT_5_1_MINI.value: 200_000,
+    Model.GPT_5_2.value: 200_000,
+    Model.GPT_5_2_MINI.value: 200_000,
     Model.GPT_3_5_TURBO.value: 16_000,
     Model.CLAUDE_SONNET_4_5.value: 200_000,
     Model.CLAUDE_OPUS_4_1.value: 200_000,
