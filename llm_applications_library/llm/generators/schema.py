@@ -170,7 +170,7 @@ class OpenAIGenerationConfig(BaseModel):
     metadata: dict | None = None
     service_tier: str | None = None  # "auto", "default", etc.
 
-    model_config = {"extra": "ignore"}  # 未定義フィールドを無視
+    model_config = {"extra": "ignore", "use_enum_values": True}
 
     @model_validator(mode="before")
     @classmethod
