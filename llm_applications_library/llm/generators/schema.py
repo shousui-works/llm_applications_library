@@ -115,12 +115,24 @@ MODEL_CONTEXT_WINDOWS: dict[str, int] = {
 }
 
 
+class ReasoningEffort(StrEnum):
+    """Reasoning effort levels for OpenAI reasoning models (o1, o3, GPT-5, etc.)"""
+
+    NONE = "none"
+    MINIMAL = "minimal"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    XHIGH = "xhigh"
+
+
 class OpenAIGenerationConfig(BaseModel):
     """OpenAI API用の生成設定（全ての有効なパラメーターを含む）"""
 
+    # Basic generation parameters
     temperature: float | None = None
-    max_output_tokens: int | None = None  # Responses API用の新パラメータ
-    max_completion_tokens: int | None = None  # GPT-5用の新パラメータ
+    max_output_tokens: int | None = None  # Responses API用
+    max_completion_tokens: int | None = None  # Chat Completions API用（推奨）
     top_p: float | None = None
     frequency_penalty: float | None = None
     presence_penalty: float | None = None
@@ -130,8 +142,31 @@ class OpenAIGenerationConfig(BaseModel):
     n: int | None = None
     logit_bias: dict | None = None
     user: str | None = None
+
+    # Tool/Function calling
     tool_choice: str | dict | None = None
     tools: list[dict] | None = None
+    parallel_tool_calls: bool | None = None
+
+    # Reasoning model parameters (o1, o3, GPT-5, etc.)
+    reasoning_effort: ReasoningEffort | str | None = (
+        None  # none, minimal, low, medium, high, xhigh
+    )
+    reasoning: dict | None = (
+        None  # {"effort": "...", "summary": "auto"} for Responses API
+    )
+
+    # Response format
+    response_format: dict | None = None  # JSON mode / Structured Outputs
+
+    # Logging and debugging
+    logprobs: bool | None = None
+    top_logprobs: int | None = None  # 0-20
+
+    # Service options
+    store: bool | None = None  # Store responses for distillation/evals
+    metadata: dict | None = None
+    service_tier: str | None = None  # "auto", "default", etc.
 
     model_config = {"extra": "ignore"}  # 未定義フィールドを無視
 
