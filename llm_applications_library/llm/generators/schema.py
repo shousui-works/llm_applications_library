@@ -129,7 +129,7 @@ class ReasoningEffort(StrEnum):
 
 
 class OpenAIGenerationConfig(BaseModel):
-    """OpenAI API用の生成設定（全ての有効なパラメーターを含む）"""
+    """OpenAI API用の生成設定 (全ての有効なパラメーターを含む)"""
 
     # Basic generation parameters
     temperature: float | None = None
@@ -186,12 +186,12 @@ class OpenAIGenerationConfig(BaseModel):
     def _validate_logprobs(self):
         """Validate that top_logprobs requires logprobs=True."""
         if self.top_logprobs is not None and not self.logprobs:
-            raise ValueError("top_logprobs requires logprobs=True")
+            raise ValueError("top_logprobs requires logprobs=True")  # noqa: TRY003
         return self
 
 
 class ClaudeGenerationConfig(BaseModel):
-    """Claude API用の生成設定（全ての有効なパラメーターを含む）"""
+    """Claude API用の生成設定 (全ての有効なパラメーターを含む)"""
 
     temperature: float | None = None
     max_tokens: int | None = None
