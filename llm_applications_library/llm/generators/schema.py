@@ -1,6 +1,8 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, model_validator
+from typing import Annotated
+
+from pydantic import BaseModel, Field, model_validator
 
 try:
     from pydantic import BaseSettings
@@ -132,7 +134,7 @@ class OpenAIGenerationConfig(BaseModel):
     # Basic generation parameters
     temperature: float | None = None
     max_output_tokens: int | None = None  # Responses API用
-    max_completion_tokens: int | None = None  # Chat Completions API用（推奨）
+    max_completion_tokens: int | None = None  # Chat Completions API用 (推奨)
     top_p: float | None = None
     frequency_penalty: float | None = None
     presence_penalty: float | None = None
@@ -161,7 +163,7 @@ class OpenAIGenerationConfig(BaseModel):
 
     # Logging and debugging
     logprobs: bool | None = None
-    top_logprobs: int | None = None  # 0-20
+    top_logprobs: Annotated[int, Field(ge=0, le=20)] | None = None
 
     # Service options
     store: bool | None = None  # Store responses for distillation/evals
@@ -179,6 +181,13 @@ class OpenAIGenerationConfig(BaseModel):
                 data = data.copy()
                 data["max_output_tokens"] = data.pop("max_tokens")
         return data
+
+    @model_validator(mode="after")
+    def _validate_logprobs(self):
+        """Validate that top_logprobs requires logprobs=True."""
+        if self.top_logprobs is not None and not self.logprobs:
+            raise ValueError("top_logprobs requires logprobs=True")
+        return self
 
 
 class ClaudeGenerationConfig(BaseModel):
