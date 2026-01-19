@@ -158,8 +158,9 @@ class OpenAIGenerationConfig(BaseModel):
         None  # {"effort": "...", "summary": "auto"} for Responses API
     )
 
-    # Response format
-    response_format: dict | None = None  # JSON mode / Structured Outputs
+    # Text format (Responses API)
+    # Use text: {"format": {"type": "json_schema", "schema": ...}} for Structured Outputs
+    text: dict | None = None
 
     # Logging and debugging
     logprobs: bool | None = None
