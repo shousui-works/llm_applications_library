@@ -8,6 +8,10 @@ from haystack import component
 class ProviderSelectableInstructGenerator:
     @component.output_types(response=str, usage=dict)
     def run(self, replies: list[str], usage: dict | None = None):
+        if not replies:
+            raise ValueError(
+                "No response received from the generator (replies list is empty)"
+            )
         return {"response": replies[0], "usage": usage or {}}
 
 
