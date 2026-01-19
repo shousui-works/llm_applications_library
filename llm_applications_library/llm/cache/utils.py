@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from llm.cache.manager import CacheManager
+    from llm_applications_library.llm.cache.manager import CacheManager
 
 # Import utilities that might not be available in all environments
 try:
@@ -313,7 +313,7 @@ class CacheCleanupContext:
         if exc_type is not None:  # エラーが発生した場合
             # Lazy import to avoid circular dependency
             if self.cache_manager is None:
-                from core.cache.manager import get_cache_manager
+                from llm_applications_library.llm.cache.manager import get_cache_manager
 
                 self.cache_manager = get_cache_manager()
 
