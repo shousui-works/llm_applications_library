@@ -205,3 +205,30 @@ class TestOpenAIVisionGenerator:
             assert call_kwargs["text"] == {
                 "format": {"type": "json_schema", "schema": {"test": 1}}
             }
+
+    def test_chat_completion_normalizes_max_tokens(self):
+        """_chat_completionがmax_tokensをmax_output_tokensに正規化するテスト"""
+        generator = OpenAIVisionGenerator(model="gpt-4o", api_key="test-key")
+
+        mock_response = Mock()
+        mock_response.output_text = "Test response"
+        mock_response.usage.model_dump.return_value = {"total_tokens": 100}
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_client.responses.create.return_value = mock_response
+            mock_openai.return_value = mock_client
+
+            messages = [{"role": "user", "content": "test"}]
+            # legacy max_tokens パラメータを渡す
+            generator._chat_completion(
+                messages,
+                max_tokens=500,
+            )
+
+            # responses.createでmax_output_tokensに変換されることを確認
+            mock_client.responses.create.assert_called_once()
+            call_kwargs = mock_client.responses.create.call_args.kwargs
+
+            assert call_kwargs["max_output_tokens"] == 500
+            assert "max_tokens" not in call_kwargs

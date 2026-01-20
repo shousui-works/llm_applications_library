@@ -221,14 +221,17 @@ class OpenAIVisionGenerator:
             # Prepare Responses API parameters
             params = generation_params.copy()
 
-            # Handle max_output_tokens / max_completion_tokens
+            # Handle max_output_tokens / max_completion_tokens / max_tokens
             max_output_tokens = params.pop("max_output_tokens", None)
             max_completion_tokens = params.pop("max_completion_tokens", None)
+            max_tokens = params.pop("max_tokens", None)
             token_limit = (
                 max_output_tokens
                 if max_output_tokens is not None
                 else max_completion_tokens
             )
+            if token_limit is None:
+                token_limit = max_tokens
             if token_limit is not None:
                 params["max_output_tokens"] = token_limit
 
