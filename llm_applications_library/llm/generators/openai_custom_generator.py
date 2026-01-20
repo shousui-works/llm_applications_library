@@ -111,15 +111,6 @@ class RetryOpenAIGenerator:
                     "stream=True is not supported in responses.create; ignoring stream flag."
                 )
 
-        # Convert reasoning_effort to reasoning object for Responses API
-        if "reasoning_effort" in responses_params:
-            effort = responses_params.pop("reasoning_effort")
-            if "reasoning" not in responses_params:
-                responses_params["reasoning"] = {"effort": effort}
-            else:
-                # If reasoning dict already exists, just add/update effort
-                responses_params["reasoning"]["effort"] = effort
-
         return responses_params
 
     def run(
