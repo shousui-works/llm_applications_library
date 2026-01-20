@@ -349,11 +349,30 @@ class OpenAIVisionGenerator:
         ):
             generation_params["max_output_tokens"] = 4096
 
+        # Filter to only supported parameters for _chat_completion
+        # This prevents unsupported params (e.g., reasoning_effort) from being passed to the API
+        supported_params = {
+            "temperature",
+            "max_completion_tokens",
+            "max_output_tokens",
+            "max_tokens",
+            "top_p",
+            "frequency_penalty",
+            "presence_penalty",
+            "stop",
+            "text",
+            "tools",
+            "tool_choice",
+        }
+        filtered_params = {
+            k: v for k, v in generation_params.items() if k in supported_params
+        }
+
         response = self._chat_completion(
             messages=messages,
             api_key=self.api_key,
             retry_config=retry_config_to_use,
-            **generation_params,
+            **filtered_params,
         )
 
         # 新しい共通クラスで返り値を統一
