@@ -45,6 +45,7 @@ class TestHaystackGeneratorWrapper:
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Generated response"
+        mock_response.error = None  # Success case
         mock_generator.run.return_value = mock_response
         mock_create_text.return_value = mock_generator
 
@@ -63,20 +64,35 @@ class TestHaystackGeneratorWrapper:
         "llm_applications_library.llm.generators.pipeline_factory.GeneratorFactory.create_text_generator"
     )
     def test_text_wrapper_run_empty_content(self, mock_create_text):
-        """Test text wrapper run with empty content."""
+        """Test text wrapper run with empty content raises error."""
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = None
+        mock_response.error = None
         mock_generator.run.return_value = mock_response
         mock_create_text.return_value = mock_generator
 
         wrapper = HaystackGeneratorWrapper(model=Model.GPT_4O)
-        result = wrapper.run("Test prompt")
+        with pytest.raises(RuntimeError, match="Generator returned empty content"):
+            wrapper.run("Test prompt")
 
-        # Check that result includes both replies and usage
-        assert "replies" in result
-        assert "usage" in result
-        assert result["replies"] == []
+    @patch(
+        "llm_applications_library.llm.generators.pipeline_factory.GeneratorFactory.create_text_generator"
+    )
+    def test_text_wrapper_run_with_error(self, mock_create_text):
+        """Test text wrapper run with error response raises error."""
+        mock_generator = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = None
+        mock_response.error = "API rate limit exceeded"
+        mock_generator.run.return_value = mock_response
+        mock_create_text.return_value = mock_generator
+
+        wrapper = HaystackGeneratorWrapper(model=Model.GPT_4O)
+        with pytest.raises(
+            RuntimeError, match="Generator error: API rate limit exceeded"
+        ):
+            wrapper.run("Test prompt")
 
 
 class TestHaystackVisionGeneratorWrapper:
@@ -111,6 +127,7 @@ class TestHaystackVisionGeneratorWrapper:
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Image analysis result"
+        mock_response.error = None  # Success case
         mock_generator.run.return_value = mock_response
         mock_create_vision.return_value = mock_generator
 
@@ -140,6 +157,7 @@ class TestHaystackVisionGeneratorWrapper:
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Analysis result"
+        mock_response.error = None  # Success case
         mock_generator.run.return_value = mock_response
         mock_create_vision.return_value = mock_generator
 
@@ -156,6 +174,22 @@ class TestHaystackVisionGeneratorWrapper:
         assert "replies" in result
         assert "usage" in result
         assert result["replies"] == ["Analysis result"]
+
+    @patch(
+        "llm_applications_library.llm.generators.pipeline_factory.GeneratorFactory.create_vision_generator"
+    )
+    def test_vision_wrapper_run_with_error(self, mock_create_vision):
+        """Test vision wrapper run with error response raises error."""
+        mock_generator = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = None
+        mock_response.error = "Vision API error"
+        mock_generator.run.return_value = mock_response
+        mock_create_vision.return_value = mock_generator
+
+        wrapper = HaystackVisionGeneratorWrapper(model=Model.GPT_4O)
+        with pytest.raises(RuntimeError, match="Generator error: Vision API error"):
+            wrapper.run(base64_images=["fake_base64"], mime_types=["image/jpeg"])
 
 
 class TestCreatePipeline:

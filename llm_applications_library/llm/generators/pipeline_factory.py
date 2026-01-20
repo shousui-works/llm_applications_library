@@ -47,13 +47,17 @@ class HaystackGeneratorWrapper:
         )
         # Handle new GeneratorResponse format
         if hasattr(result, "content"):
+            # Check for error response
+            if hasattr(result, "error") and result.error:
+                raise RuntimeError(f"Generator error: {result.error}")
             content = result.content
-            replies = [content] if content else []
+            if not content:
+                raise RuntimeError("Generator returned empty content")
+            replies = [content]
             usage = result.usage.model_dump() if result.usage else {}
         else:
             # Fallback for old format (backward compatibility) - should not happen with new generators
-            replies = []
-            usage = {}
+            raise RuntimeError("Unexpected generator response format")
         return {"replies": [str(reply) for reply in replies], "usage": usage}
 
 
@@ -87,13 +91,17 @@ class HaystackVisionGeneratorWrapper:
         )
         # Handle new GeneratorResponse format
         if hasattr(result, "content"):
+            # Check for error response
+            if hasattr(result, "error") and result.error:
+                raise RuntimeError(f"Generator error: {result.error}")
             content = result.content
-            replies = [content] if content else []
+            if not content:
+                raise RuntimeError("Generator returned empty content")
+            replies = [content]
             usage = result.usage.model_dump() if result.usage else {}
         else:
             # Fallback for old format (backward compatibility) - should not happen with new generators
-            replies = []
-            usage = {}
+            raise RuntimeError("Unexpected generator response format")
         return {"replies": [str(reply) for reply in replies], "usage": usage}
 
 
