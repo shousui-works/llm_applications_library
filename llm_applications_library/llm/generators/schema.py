@@ -175,12 +175,18 @@ class OpenAIGenerationConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _alias_max_tokens(cls, data):
-        """Support legacy max_tokens by remapping to max_output_tokens."""
+    def _alias_legacy_params(cls, data):
+        """Support legacy parameters by remapping to new names."""
         if isinstance(data, dict):
+            data = data.copy()
+            # max_tokens -> max_output_tokens
             if "max_tokens" in data and "max_output_tokens" not in data:
-                data = data.copy()
                 data["max_output_tokens"] = data.pop("max_tokens")
+            # response_format -> text.format (Responses API migration)
+            if "response_format" in data and "text" not in data:
+                rf = data.pop("response_format")
+                if rf is not None:
+                    data["text"] = {"format": rf}
         return data
 
     @model_validator(mode="after")
