@@ -197,13 +197,18 @@ class OpenAIVisionGenerator:
     def _chat_completion(
         self,
         messages: list[dict],
-        temperature: float = 0.1,
-        max_completion_tokens: int | None = None,
-        max_output_tokens: int | None = None,
         api_key: str | None = None,
         retry_config: RetryConfig | None = None,
+        **generation_params: Any,
     ) -> dict[str, Any]:
-        """Responses API call with tenacity retry for robust error handling"""
+        """Responses API call with tenacity retry for robust error handling.
+
+        Args:
+            messages: Input messages for the API
+            api_key: OpenAI API key
+            retry_config: Retry configuration
+            **generation_params: Generation parameters (temperature, max_output_tokens, text, etc.)
+        """
 
         @openai_retry(retry_config)
         def _make_api_call():
@@ -213,22 +218,28 @@ class OpenAIVisionGenerator:
                 timeout=1800,
             )
 
-            kwargs = {
-                "model": self.model,
-                "input": messages,
-                "temperature": temperature,
-            }
+            # Prepare Responses API parameters
+            params = generation_params.copy()
 
-            # Responses API uses max_output_tokens
+            # Handle max_output_tokens / max_completion_tokens / max_tokens
+            max_output_tokens = params.pop("max_output_tokens", None)
+            max_completion_tokens = params.pop("max_completion_tokens", None)
+            max_tokens = params.pop("max_tokens", None)
             token_limit = (
                 max_output_tokens
                 if max_output_tokens is not None
                 else max_completion_tokens
             )
+            if token_limit is None:
+                token_limit = max_tokens
             if token_limit is not None:
-                kwargs["max_output_tokens"] = token_limit
+                params["max_output_tokens"] = token_limit
 
-            response = client.responses.create(**kwargs)
+            response = client.responses.create(
+                model=self.model,
+                input=messages,
+                **params,
+            )
 
             return {
                 "success": True,

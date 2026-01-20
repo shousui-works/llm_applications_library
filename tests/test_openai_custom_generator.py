@@ -141,3 +141,94 @@ class TestOpenAIVisionGenerator:
 
                 # リトライデコレータが正しい設定で呼ばれたことを確認
                 mock_retry.assert_called_once_with(retry_config)
+
+    def test_chat_completion_passes_generation_params(self):
+        """_chat_completionがgeneration_paramsを正しくAPIに渡すテスト"""
+        generator = OpenAIVisionGenerator(model="gpt-4o", api_key="test-key")
+
+        mock_response = Mock()
+        mock_response.output_text = "Test response"
+        mock_response.usage.model_dump.return_value = {"total_tokens": 100}
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_client.responses.create.return_value = mock_response
+            mock_openai.return_value = mock_client
+
+            messages = [{"role": "user", "content": "test"}]
+            # text パラメータを含むgeneration_paramsを渡す
+            generator._chat_completion(
+                messages,
+                temperature=0.5,
+                max_output_tokens=1000,
+                text={"format": {"type": "json_schema", "schema": {"foo": "bar"}}},
+            )
+
+            # responses.createが正しいパラメータで呼ばれたことを確認
+            mock_client.responses.create.assert_called_once()
+            call_kwargs = mock_client.responses.create.call_args.kwargs
+
+            assert call_kwargs["temperature"] == 0.5
+            assert call_kwargs["max_output_tokens"] == 1000
+            assert call_kwargs["text"] == {
+                "format": {"type": "json_schema", "schema": {"foo": "bar"}}
+            }
+
+    def test_run_with_text_format_parameter(self):
+        """runメソッドでtext (Structured Outputs)パラメータが渡されるテスト"""
+        generator = OpenAIVisionGenerator(model="gpt-4o", api_key="test-key")
+
+        expected_result = {
+            "success": True,
+            "content": '{"result": "structured"}',
+            "usage": {"total_tokens": 150},
+            "error": None,
+        }
+
+        with patch.object(
+            generator, "_chat_completion", return_value=expected_result
+        ) as mock_chat:
+            result = generator.run(
+                base64_images=["test_base64_data"],
+                mime_types=["image/png"],
+                generation_kwargs={
+                    "temperature": 0.1,
+                    "text": {"format": {"type": "json_schema", "schema": {"test": 1}}},
+                },
+            )
+
+            assert result.is_success() is True
+
+            # _chat_completionに正しいパラメータが渡されたことを確認
+            call_kwargs = mock_chat.call_args.kwargs
+            assert call_kwargs["temperature"] == 0.1
+            assert call_kwargs["text"] == {
+                "format": {"type": "json_schema", "schema": {"test": 1}}
+            }
+
+    def test_chat_completion_normalizes_max_tokens(self):
+        """_chat_completionがmax_tokensをmax_output_tokensに正規化するテスト"""
+        generator = OpenAIVisionGenerator(model="gpt-4o", api_key="test-key")
+
+        mock_response = Mock()
+        mock_response.output_text = "Test response"
+        mock_response.usage.model_dump.return_value = {"total_tokens": 100}
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_client.responses.create.return_value = mock_response
+            mock_openai.return_value = mock_client
+
+            messages = [{"role": "user", "content": "test"}]
+            # legacy max_tokens パラメータを渡す
+            generator._chat_completion(
+                messages,
+                max_tokens=500,
+            )
+
+            # responses.createでmax_output_tokensに変換されることを確認
+            mock_client.responses.create.assert_called_once()
+            call_kwargs = mock_client.responses.create.call_args.kwargs
+
+            assert call_kwargs["max_output_tokens"] == 500
+            assert "max_tokens" not in call_kwargs
