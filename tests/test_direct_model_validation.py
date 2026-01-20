@@ -125,6 +125,43 @@ class TestDirectModelValidation:
         assert "max_tokens" not in result
         assert result["max_output_tokens"] == 500
 
+    def test_response_format_maps_to_text_format(self):
+        """Legacy response_format should map to text.format."""
+        kwargs = {"response_format": {"type": "json_schema", "schema": {"foo": "bar"}}}
+
+        config = OpenAIGenerationConfig.model_validate(kwargs)
+        result = config.model_dump(exclude_none=True)
+
+        assert "response_format" not in result
+        assert result["text"] == {
+            "format": {"type": "json_schema", "schema": {"foo": "bar"}}
+        }
+
+    def test_response_format_ignored_when_text_present(self):
+        """When text is already present, response_format should be ignored."""
+        kwargs = {
+            "response_format": {"type": "json_object"},
+            "text": {"format": {"type": "json_schema", "schema": {"bar": "baz"}}},
+        }
+
+        config = OpenAIGenerationConfig.model_validate(kwargs)
+        result = config.model_dump(exclude_none=True)
+
+        # text should be preserved, response_format should be ignored
+        assert result["text"] == {
+            "format": {"type": "json_schema", "schema": {"bar": "baz"}}
+        }
+
+    def test_response_format_none_does_not_create_text(self):
+        """When response_format is None, text should not be created."""
+        kwargs = {"response_format": None, "temperature": 0.5}
+
+        config = OpenAIGenerationConfig.model_validate(kwargs)
+        result = config.model_dump(exclude_none=True)
+
+        assert "text" not in result
+        assert result["temperature"] == 0.5
+
     def test_complex_types(self):
         """Test complex types like dicts and lists."""
         kwargs = {
