@@ -45,6 +45,7 @@ class TestHaystackGeneratorWrapper:
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Generated response"
+        mock_response.error = None  # Explicitly set error to None
         mock_generator.run.return_value = mock_response
         mock_create_text.return_value = mock_generator
 
@@ -63,20 +64,19 @@ class TestHaystackGeneratorWrapper:
         "llm_applications_library.llm.generators.pipeline_factory.GeneratorFactory.create_text_generator"
     )
     def test_text_wrapper_run_empty_content(self, mock_create_text):
-        """Test text wrapper run with empty content."""
+        """Test text wrapper run with empty content raises error."""
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = None
+        mock_response.error = None  # Explicitly set error to None
         mock_generator.run.return_value = mock_response
         mock_create_text.return_value = mock_generator
 
         wrapper = HaystackGeneratorWrapper(model=Model.GPT_4O)
-        result = wrapper.run("Test prompt")
 
-        # Check that result includes both replies and usage
-        assert "replies" in result
-        assert "usage" in result
-        assert result["replies"] == []
+        # Empty content should now raise RuntimeError
+        with pytest.raises(RuntimeError, match="Generator returned empty content"):
+            wrapper.run("Test prompt")
 
 
 class TestHaystackVisionGeneratorWrapper:
@@ -111,6 +111,7 @@ class TestHaystackVisionGeneratorWrapper:
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Image analysis result"
+        mock_response.error = None  # Explicitly set error to None
         mock_generator.run.return_value = mock_response
         mock_create_vision.return_value = mock_generator
 
@@ -140,6 +141,7 @@ class TestHaystackVisionGeneratorWrapper:
         mock_generator = MagicMock()
         mock_response = MagicMock()
         mock_response.content = "Analysis result"
+        mock_response.error = None  # Explicitly set error to None
         mock_generator.run.return_value = mock_response
         mock_create_vision.return_value = mock_generator
 
