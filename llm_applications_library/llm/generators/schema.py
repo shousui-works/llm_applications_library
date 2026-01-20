@@ -171,6 +171,11 @@ class OpenAIGenerationConfig(BaseModel):
     metadata: dict | None = None
     service_tier: str | None = None  # "auto", "default", etc.
 
+    # Responses API specific options
+    instructions: str | None = None  # System instructions for the model
+    include: list[str] | None = None  # e.g., ["reasoning.encrypted_content"]
+    background: bool | None = None  # Run in background mode
+
     model_config = {"extra": "ignore", "use_enum_values": True}
 
     @model_validator(mode="before")

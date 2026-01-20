@@ -175,6 +175,25 @@ class TestDirectModelValidation:
         assert result["stop"] == ["END", "STOP"]
         assert len(result["tools"]) == 1
 
+    def test_responses_api_specific_params(self):
+        """Test Responses API specific parameters are preserved."""
+        kwargs = {
+            "instructions": "You are a helpful assistant.",
+            "include": ["reasoning.encrypted_content"],
+            "background": True,
+            "store": True,
+            "service_tier": "auto",
+        }
+
+        config = OpenAIGenerationConfig.model_validate(kwargs)
+        result = config.model_dump(exclude_none=True)
+
+        assert result["instructions"] == "You are a helpful assistant."
+        assert result["include"] == ["reasoning.encrypted_content"]
+        assert result["background"] is True
+        assert result["store"] is True
+        assert result["service_tier"] == "auto"
+
 
 class TestIntegrationWithGenerators:
     """Test integration with actual generators."""

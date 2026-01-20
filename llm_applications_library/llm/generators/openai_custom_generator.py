@@ -349,11 +349,45 @@ class OpenAIVisionGenerator:
         ):
             generation_params["max_output_tokens"] = 4096
 
+        # Filter to only supported parameters for Responses API
+        # See: https://platform.openai.com/docs/api-reference/responses/create
+        supported_params = {
+            # Basic generation parameters
+            "temperature",
+            "top_p",
+            "max_output_tokens",
+            "max_completion_tokens",  # Legacy alias
+            "max_tokens",  # Legacy alias
+            "stop",
+            # Responses API specific
+            "text",  # Structured outputs: {"format": {"type": "json_schema", ...}}
+            "tools",
+            "reasoning",  # {"effort": "high", "summary": "auto"}
+            "instructions",
+            "metadata",
+            "store",
+            "include",
+            "background",
+            "service_tier",
+        }
+        filtered_params = {}
+        excluded_params = []
+        for k, v in generation_params.items():
+            if k in supported_params:
+                filtered_params[k] = v
+            else:
+                excluded_params.append(k)
+
+        if excluded_params:
+            logger.debug(
+                f"Filtered out unsupported parameters for Responses API: {excluded_params}"
+            )
+
         response = self._chat_completion(
             messages=messages,
             api_key=self.api_key,
             retry_config=retry_config_to_use,
-            **generation_params,
+            **filtered_params,
         )
 
         # 新しい共通クラスで返り値を統一
