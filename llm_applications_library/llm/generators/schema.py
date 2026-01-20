@@ -117,17 +117,6 @@ MODEL_CONTEXT_WINDOWS: dict[str, int] = {
 }
 
 
-class ReasoningEffort(StrEnum):
-    """Reasoning effort levels for OpenAI reasoning models (o1, o3, GPT-5, etc.)"""
-
-    NONE = "none"
-    MINIMAL = "minimal"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    XHIGH = "xhigh"
-
-
 class OpenAIGenerationConfig(BaseModel):
     """OpenAI API用の生成設定 (全ての有効なパラメーターを含む)"""
 
@@ -151,12 +140,8 @@ class OpenAIGenerationConfig(BaseModel):
     parallel_tool_calls: bool | None = None
 
     # Reasoning model parameters (o1, o3, GPT-5, etc.)
-    reasoning_effort: ReasoningEffort | str | None = (
-        None  # none, minimal, low, medium, high, xhigh
-    )
-    reasoning: dict | None = (
-        None  # {"effort": "...", "summary": "auto"} for Responses API
-    )
+    # Use reasoning: {"effort": "high", "summary": "auto"} for Responses API
+    reasoning: dict | None = None
 
     # Text format (Responses API)
     # Use text: {"format": {"type": "json_schema", "schema": ...}} for Structured Outputs
