@@ -332,8 +332,14 @@ class OpenAIVisionGenerator:
             generation_params = {}
 
         # Set sensible defaults if not specified
-        # Note: Reasoning models (o1, o3, gpt-5) don't support temperature
-        is_reasoning_model = any(x in self.model.lower() for x in ["o1", "o3", "gpt-5"])
+        # Note: Reasoning models (o1, o3, o3-mini, gpt-5) don't support temperature
+        model_lower = self.model.lower()
+        is_reasoning_model = (
+            model_lower.startswith(("o1", "o3"))
+            or "-o1" in model_lower
+            or "-o3" in model_lower
+            or "gpt-5" in model_lower
+        )
         if "temperature" not in generation_params and not is_reasoning_model:
             generation_params["temperature"] = 0.1
         if (
