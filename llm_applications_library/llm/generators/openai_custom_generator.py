@@ -332,7 +332,11 @@ class OpenAIVisionGenerator:
             generation_params = {}
 
         # Set sensible defaults if not specified
-        if "temperature" not in generation_params:
+        # Note: Reasoning models (o1, o3, gpt-5) don't support temperature
+        is_reasoning_model = any(
+            x in self.model.lower() for x in ["o1", "o3", "gpt-5"]
+        )
+        if "temperature" not in generation_params and not is_reasoning_model:
             generation_params["temperature"] = 0.1
         if (
             "max_output_tokens" not in generation_params
