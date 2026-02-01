@@ -55,6 +55,7 @@ class RetryOpenAIGenerator:
     tenacityベースのretry機能を追加。
     OpenAI APIの一時的なエラー（レート制限、タイムアウト等）に対して
     指数バックオフでリトライを実行する。
+    Azure OpenAIもサポート。
     """
 
     def __init__(
@@ -62,18 +63,45 @@ class RetryOpenAIGenerator:
         api_key: str | None = None,
         model: str = "gpt-4o-mini",
         retry_config: RetryConfig | None = None,
+        azure_endpoint: str | None = None,
+        azure_api_version: str | None = None,
     ):
         """
         RetryOpenAIGeneratorを初期化
 
         Args:
-            api_key: OpenAI API key
-            model: OpenAI model name
-            retry_config: リトライ設定（RetryConfigオブジェクト）
+            api_key: OpenAI API key (Azure使用時はAzure APIキー)
+            model: OpenAI model name (Azure使用時はデプロイメント名)
+            retry_config: リトライ設定(RetryConfigオブジェクト)
+            azure_endpoint: Azure OpenAIエンドポイント(指定時はAzureモード)
+            azure_api_version: Azure OpenAI APIバージョン
         """
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.azure_api_version = (
+            azure_api_version
+            or os.getenv("AZURE_OPENAI_API_VERSION")
+            or "2024-12-01-preview"
+        )
+        self._use_azure = self.azure_endpoint is not None
+
+        if self._use_azure:
+            self.api_key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
+        else:
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+
         self.model = model
         self.retry_config = retry_config or RetryConfig()
+
+    def _create_client(self) -> openai.OpenAI | openai.AzureOpenAI:
+        """OpenAIまたはAzure OpenAIクライアントを作成"""
+        if self._use_azure and self.azure_endpoint:
+            return openai.AzureOpenAI(
+                api_key=self.api_key,
+                azure_endpoint=self.azure_endpoint,
+                api_version=self.azure_api_version,
+                max_retries=0,
+            )
+        return openai.OpenAI(api_key=self.api_key, max_retries=0)
 
     def _build_text_input(self, prompt: str, system_prompt: str | None = None):
         """Build Responses API input payload for text-only requests."""
@@ -134,7 +162,7 @@ class RetryOpenAIGenerator:
         @openai_retry(self.retry_config)
         def _run_with_retry():
             """retry機能付きのrun実行"""
-            client = openai.OpenAI(api_key=self.api_key)
+            client = self._create_client()
             input_payload = self._build_text_input(prompt, system_prompt)
 
             config_dict: dict[str, Any] = {}
@@ -178,17 +206,51 @@ class RetryOpenAIGenerator:
 
 
 class OpenAIVisionGenerator:
+    """Vision Generator with Azure OpenAI support."""
+
     def __init__(
-        self, model, api_key: str | None = None, retry_config: RetryConfig | None = None
+        self,
+        model: str,
+        api_key: str | None = None,
+        retry_config: RetryConfig | None = None,
+        azure_endpoint: str | None = None,
+        azure_api_version: str | None = None,
     ):
         self.model = model
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.azure_endpoint = azure_endpoint or os.getenv("AZURE_OPENAI_ENDPOINT")
+        self.azure_api_version = (
+            azure_api_version
+            or os.getenv("AZURE_OPENAI_API_VERSION")
+            or "2024-12-01-preview"
+        )
+        self._use_azure = self.azure_endpoint is not None
+
+        if self._use_azure:
+            self.api_key = api_key or os.getenv("AZURE_OPENAI_API_KEY")
+        else:
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+
         self.retry_config = retry_config or RetryConfig()
+
+    def _create_client(self) -> openai.OpenAI | openai.AzureOpenAI:
+        """OpenAIまたはAzure OpenAIクライアントを作成"""
+        if self._use_azure and self.azure_endpoint:
+            return openai.AzureOpenAI(
+                api_key=self.api_key,
+                azure_endpoint=self.azure_endpoint,
+                api_version=self.azure_api_version,
+                max_retries=0,
+                timeout=1800,
+            )
+        return openai.OpenAI(
+            api_key=self.api_key,
+            max_retries=0,
+            timeout=1800,
+        )
 
     def _chat_completion(
         self,
         messages: list[dict],
-        api_key: str | None = None,
         retry_config: RetryConfig | None = None,
         **generation_params: Any,
     ) -> dict[str, Any]:
@@ -196,18 +258,13 @@ class OpenAIVisionGenerator:
 
         Args:
             messages: Input messages for the API
-            api_key: OpenAI API key
             retry_config: Retry configuration
             **generation_params: Generation parameters (temperature, max_output_tokens, text, etc.)
         """
 
         @openai_retry(retry_config)
         def _make_api_call():
-            client = openai.OpenAI(
-                api_key=api_key or os.getenv("OPENAI_API_KEY"),
-                max_retries=0,
-                timeout=1800,
-            )
+            client = self._create_client()
 
             # Prepare Responses API parameters
             params = generation_params.copy()
@@ -384,7 +441,6 @@ class OpenAIVisionGenerator:
 
         response = self._chat_completion(
             messages=messages,
-            api_key=self.api_key,
             retry_config=retry_config_to_use,
             **filtered_params,
         )

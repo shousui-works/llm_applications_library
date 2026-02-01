@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 from llm_applications_library.llm.generators.openai_custom_generator import (
     OpenAIVisionGenerator,
+    RetryOpenAIGenerator,
 )
 from llm_applications_library.llm.generators.schema import RetryConfig
 
@@ -232,3 +233,176 @@ class TestOpenAIVisionGenerator:
 
             assert call_kwargs["max_output_tokens"] == 500
             assert "max_tokens" not in call_kwargs
+
+
+class TestAzureOpenAISupport:
+    """Azure OpenAI対応のテスト"""
+
+    def test_retry_generator_azure_initialization(self):
+        """RetryOpenAIGeneratorのAzure初期化テスト"""
+        generator = RetryOpenAIGenerator(
+            api_key="azure-key",
+            model="gpt-4o",
+            azure_endpoint="https://test.openai.azure.com/",
+            azure_api_version="2024-12-01-preview",
+        )
+        assert generator._use_azure is True
+        assert generator.api_key == "azure-key"
+        assert generator.azure_endpoint == "https://test.openai.azure.com/"
+        assert generator.azure_api_version == "2024-12-01-preview"
+
+    def test_retry_generator_standard_openai_initialization(self):
+        """RetryOpenAIGeneratorの標準OpenAI初期化テスト"""
+        import os
+
+        # 環境変数をクリアしてテストの安定性を確保
+        env_backup = {}
+        azure_vars = [
+            "AZURE_OPENAI_ENDPOINT",
+            "AZURE_OPENAI_API_KEY",
+            "AZURE_OPENAI_API_VERSION",
+        ]
+        for var in azure_vars:
+            env_backup[var] = os.environ.pop(var, None)
+
+        try:
+            generator = RetryOpenAIGenerator(
+                api_key="openai-key",
+                model="gpt-4o",
+            )
+            assert generator._use_azure is False
+            assert generator.api_key == "openai-key"
+            assert generator.azure_endpoint is None
+        finally:
+            # 環境変数を復元
+            for var, value in env_backup.items():
+                if value is not None:
+                    os.environ[var] = value
+
+    def test_retry_generator_azure_env_vars(self):
+        """RetryOpenAIGeneratorのAzure環境変数テスト"""
+        with patch.dict(
+            "os.environ",
+            {
+                "AZURE_OPENAI_ENDPOINT": "https://env-test.openai.azure.com/",
+                "AZURE_OPENAI_API_KEY": "env-azure-key",
+                "AZURE_OPENAI_API_VERSION": "2024-06-01",
+            },
+            clear=False,
+        ):
+            generator = RetryOpenAIGenerator(model="gpt-4o")
+            assert generator._use_azure is True
+            assert generator.api_key == "env-azure-key"
+            assert generator.azure_endpoint == "https://env-test.openai.azure.com/"
+            assert generator.azure_api_version == "2024-06-01"
+
+    def test_retry_generator_creates_azure_client(self):
+        """RetryOpenAIGeneratorがAzureOpenAIクライアントを作成するテスト"""
+        generator = RetryOpenAIGenerator(
+            api_key="azure-key",
+            model="gpt-4o",
+            azure_endpoint="https://test.openai.azure.com/",
+        )
+
+        with patch("openai.AzureOpenAI") as mock_azure:
+            mock_client = Mock()
+            mock_azure.return_value = mock_client
+
+            client = generator._create_client()
+
+            mock_azure.assert_called_once_with(
+                api_key="azure-key",
+                azure_endpoint="https://test.openai.azure.com/",
+                api_version="2024-12-01-preview",
+                max_retries=0,
+            )
+            assert client == mock_client
+
+    def test_retry_generator_creates_openai_client(self):
+        """RetryOpenAIGeneratorが標準OpenAIクライアントを作成するテスト"""
+        generator = RetryOpenAIGenerator(
+            api_key="openai-key",
+            model="gpt-4o",
+        )
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_openai.return_value = mock_client
+
+            client = generator._create_client()
+
+            mock_openai.assert_called_once_with(
+                api_key="openai-key",
+                max_retries=0,
+            )
+            assert client == mock_client
+
+    def test_vision_generator_azure_initialization(self):
+        """OpenAIVisionGeneratorのAzure初期化テスト"""
+        generator = OpenAIVisionGenerator(
+            model="gpt-4o",
+            api_key="azure-key",
+            azure_endpoint="https://test.openai.azure.com/",
+            azure_api_version="2024-12-01-preview",
+        )
+        assert generator._use_azure is True
+        assert generator.api_key == "azure-key"
+        assert generator.azure_endpoint == "https://test.openai.azure.com/"
+
+    def test_vision_generator_creates_azure_client(self):
+        """OpenAIVisionGeneratorがAzureOpenAIクライアントを作成するテスト"""
+        generator = OpenAIVisionGenerator(
+            model="gpt-4o",
+            api_key="azure-key",
+            azure_endpoint="https://test.openai.azure.com/",
+        )
+
+        with patch("openai.AzureOpenAI") as mock_azure:
+            mock_client = Mock()
+            mock_azure.return_value = mock_client
+
+            client = generator._create_client()
+
+            mock_azure.assert_called_once_with(
+                api_key="azure-key",
+                azure_endpoint="https://test.openai.azure.com/",
+                api_version="2024-12-01-preview",
+                max_retries=0,
+                timeout=1800,
+            )
+            assert client == mock_client
+
+    def test_vision_generator_azure_env_vars(self):
+        """OpenAIVisionGeneratorのAzure環境変数テスト"""
+        with patch.dict(
+            "os.environ",
+            {
+                "AZURE_OPENAI_ENDPOINT": "https://env-test.openai.azure.com/",
+                "AZURE_OPENAI_API_KEY": "env-azure-key",
+            },
+            clear=False,
+        ):
+            generator = OpenAIVisionGenerator(model="gpt-4o")
+            assert generator._use_azure is True
+            assert generator.api_key == "env-azure-key"
+            assert generator.azure_endpoint == "https://env-test.openai.azure.com/"
+
+    def test_vision_generator_creates_openai_client(self):
+        """OpenAIVisionGeneratorが標準OpenAIクライアントを作成するテスト"""
+        generator = OpenAIVisionGenerator(
+            model="gpt-4o",
+            api_key="openai-key",
+        )
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_openai.return_value = mock_client
+
+            client = generator._create_client()
+
+            mock_openai.assert_called_once_with(
+                api_key="openai-key",
+                max_retries=0,
+                timeout=1800,
+            )
+            assert client == mock_client
