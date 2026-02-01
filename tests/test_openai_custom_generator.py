@@ -253,13 +253,31 @@ class TestAzureOpenAISupport:
 
     def test_retry_generator_standard_openai_initialization(self):
         """RetryOpenAIGeneratorの標準OpenAI初期化テスト"""
-        generator = RetryOpenAIGenerator(
-            api_key="openai-key",
-            model="gpt-4o",
-        )
-        assert generator._use_azure is False
-        assert generator.api_key == "openai-key"
-        assert generator.azure_endpoint is None
+        import os
+
+        # 環境変数をクリアしてテストの安定性を確保
+        env_backup = {}
+        azure_vars = [
+            "AZURE_OPENAI_ENDPOINT",
+            "AZURE_OPENAI_API_KEY",
+            "AZURE_OPENAI_API_VERSION",
+        ]
+        for var in azure_vars:
+            env_backup[var] = os.environ.pop(var, None)
+
+        try:
+            generator = RetryOpenAIGenerator(
+                api_key="openai-key",
+                model="gpt-4o",
+            )
+            assert generator._use_azure is False
+            assert generator.api_key == "openai-key"
+            assert generator.azure_endpoint is None
+        finally:
+            # 環境変数を復元
+            for var, value in env_backup.items():
+                if value is not None:
+                    os.environ[var] = value
 
     def test_retry_generator_azure_env_vars(self):
         """RetryOpenAIGeneratorのAzure環境変数テスト"""
