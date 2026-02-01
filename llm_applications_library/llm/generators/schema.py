@@ -31,6 +31,9 @@ class APIKeySettings(BaseSettings):
     """API key settings from environment variables."""
 
     openai_api_key: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_version: str | None = None
     anthropic_api_key: str | None = None
 
     model_config = {
