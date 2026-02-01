@@ -296,6 +296,7 @@ class TestAzureOpenAISupport:
                 api_key="azure-key",
                 azure_endpoint="https://test.openai.azure.com/",
                 api_version="2024-12-01-preview",
+                max_retries=0,
             )
             assert client == mock_client
 
@@ -312,7 +313,10 @@ class TestAzureOpenAISupport:
 
             client = generator._create_client()
 
-            mock_openai.assert_called_once_with(api_key="openai-key")
+            mock_openai.assert_called_once_with(
+                api_key="openai-key",
+                max_retries=0,
+            )
             assert client == mock_client
 
     def test_vision_generator_azure_initialization(self):
@@ -364,3 +368,23 @@ class TestAzureOpenAISupport:
             assert generator._use_azure is True
             assert generator.api_key == "env-azure-key"
             assert generator.azure_endpoint == "https://env-test.openai.azure.com/"
+
+    def test_vision_generator_creates_openai_client(self):
+        """OpenAIVisionGeneratorが標準OpenAIクライアントを作成するテスト"""
+        generator = OpenAIVisionGenerator(
+            model="gpt-4o",
+            api_key="openai-key",
+        )
+
+        with patch("openai.OpenAI") as mock_openai:
+            mock_client = Mock()
+            mock_openai.return_value = mock_client
+
+            client = generator._create_client()
+
+            mock_openai.assert_called_once_with(
+                api_key="openai-key",
+                max_retries=0,
+                timeout=1800,
+            )
+            assert client == mock_client

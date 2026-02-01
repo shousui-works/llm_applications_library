@@ -99,8 +99,9 @@ class RetryOpenAIGenerator:
                 api_key=self.api_key,
                 azure_endpoint=self.azure_endpoint,
                 api_version=self.azure_api_version,
+                max_retries=0,
             )
-        return openai.OpenAI(api_key=self.api_key)
+        return openai.OpenAI(api_key=self.api_key, max_retries=0)
 
     def _build_text_input(self, prompt: str, system_prompt: str | None = None):
         """Build Responses API input payload for text-only requests."""
